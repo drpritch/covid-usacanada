@@ -17,16 +17,16 @@ stateUnfilter <- c('Hawaii','Alaska','Puerto Rico','Virgin Islands','Northern Ma
 
 canadaFiles <- c(
   #Canada = 'HR_000a18a_e',
-  NL = 'HR_010a18a_e',
-  PEI = 'HR_011a18a_e',
-  'Nova Scotia' = 'HR_012a18a_e',
-  'New Brunswick' = 'HR_013a18a_e',
-  Quebec = 'HR_024a18a_e',
-  Ontario = 'HR_035a18a_e',
-  Manitoba = 'HR_046a18a_e',
-  Saskatchewan = 'HR_047a18a_e',
-  Alberta = 'HR_048a18a_e',
-  BC = 'HR_059a18a_e');
+  NL = 'HR_010b18a_e',
+  PEI = 'HR_011b18a_e',
+  'Nova Scotia' = 'HR_012b18a_e',
+  'New Brunswick' = 'HR_013b18a_e',
+  Quebec = 'HR_024b18a_e',
+  Ontario = 'HR_035b18a_e',
+  Manitoba = 'HR_046b18a_e',
+  Saskatchewan = 'HR_047b18a_e',
+  Alberta = 'HR_048b18a_e',
+  BC = 'HR_059b18a_e');
 for (i in 1:length(canadaFiles)) {
   canadaFile <- canadaFiles[i];
   foo <- st_read(paste0('../input/', canadaFile, '/', canadaFile, ".shp"));
@@ -38,6 +38,7 @@ for (i in 1:length(canadaFiles)) {
   }
 }
 canadaCases <- read.csv('../input/cases_timeseries_hr.csv');
+canadaCases$health_region <- factor(canadaCases$health_region);
 levels(canadaCases$health_region) <- c(levels(canadaCases$health_region),
     'Central Alberta', 'Central Saskatchewan',
     'North Alberta', 'North Saskatchewan',
@@ -56,8 +57,7 @@ canadaCases <- disambiguateRegion(canadaCases, 'Eastern', 'Ontario', 'NL');
 canadaCases <- disambiguateRegion(canadaCases, 'Northern', 'Manitoba', 'BC');
 
 canadaGeo$province <- factor(canadaGeo$province, levels=levels(canadaCases$province));
-# Convert from factor to number.
-canadaGeo$HR_UID <- levels(canadaGeo$HR_UID)[as.numeric(canadaGeo$HR_UID)];
+canadaGeo$HR_UID <- factor(as.numeric(canadaGeo$HR_UID));
 canadaGeo$health_region <- forcats::fct_recode(canadaGeo$HR_UID,
   !!!unlist(lapply(list(
     'South Alberta'=4831,
@@ -300,18 +300,16 @@ canada <- canadaCases %>%
 
 canada <- canada %>%
   left_join(canadaGeo %>% st_transform(theCoords) %>% st_simplify(dTolerance=500), by = 'health_region') %>%
-  select(health_region, cases, pop100k, geometry);
+  select(health_region, cases, pop100k, geometry, province=province.x);
 canada$HR_UID <- NULL;
-canada$province <- canada$province.x;
-canada$province.x <- NULL;
 #ggplot(canada) +
 #  geom_sf(aes(geometry=geometry, fill=weekly / pop100k), color='#00000010') +
 #  scale_fill_fermenter(palette='GnBu', direction=1,);
 
 usaGeo <- st_read('../input/cb_2018_us_county_20m.shp');
 #usaGeo <- st_read('../input/tl_2019_us_county.shp');
-usaGeo$STATEFP <- as.numeric(levels(usaGeo$STATEFP)[usaGeo$STATEFP]);
-usaGeo$COUNTYFP <- as.numeric(levels(usaGeo$COUNTYFP)[usaGeo$COUNTYFP]);
+usaGeo$STATEFP <- as.numeric(usaGeo$STATEFP);
+usaGeo$COUNTYFP <- as.numeric(usaGeo$COUNTYFP);
 usaGeo$fips <- usaGeo$STATEFP * 1000 + usaGeo$COUNTYFP;
 
 usaCases <- read.csv('../input/us-counties.csv');
@@ -407,10 +405,10 @@ plotit <- function(data, interp, filename, bRate = TRUE) {
   }
 }
 
-plotit(canada, 0, '0_ggh.png');
-plotit(both, 0, '1_ggh_usa.png');
-plotit(both, 0.3, '2_30_percent.png');
-plotit(both, 1.0, '3_ontario.png');
-plotit(both, NA, '4_north_america.png');
+#plotit(canada, 0, '0_ggh.png');
+#plotit(both, 0, '1_ggh_usa.png');
+#plotit(both, 0.3, '2_30_percent.png');
+#plotit(both, 1.0, '3_ontario.png');
+#plotit(both, NA, '4_north_america.png');
 
 
