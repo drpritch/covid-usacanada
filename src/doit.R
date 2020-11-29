@@ -140,7 +140,9 @@ canadaGeo$health_region <- forcats::fct_recode(canadaGeo$HR_UID,
   as.character)));
 
 # health_region == ENGNAME for these provinces
-hrFilter <-canadaGeo$province %in% c('PEI', 'New Brunswick', 'Nova Scotia');
+# Sadly, province field seems to be absent from cartographic shape files.
+#hrFilter <- canadaGeo$province %in% c('PEI', 'New Brunswick', 'Nova Scotia');
+hrFilter <- floor(as.numeric(levels(canadaGeo$HR_UID)[canadaGeo$HR_UID])/100) %in% 11:13;
 canadaGeo$health_region <- as.character(canadaGeo$health_region);
 canadaGeo$health_region[hrFilter] <- as.character(canadaGeo$ENGNAME[hrFilter]);
 canadaGeo$health_region <- factor(canadaGeo$health_region);
@@ -292,16 +294,14 @@ canadaCases <- canadaCases %>%
 # By shifting by three: week 1 = Dec 29...Jan 4 (Sun-Sat)
 # and week 47 = Nov. 15-21
 canadaCases <- canadaCases %>% group_by(health_region, province, pop100k, week = lubridate::week(date_report + 3)) %>%
-  summarise(cases=sum(cases));
+  summarise(cases=sum(cases)) %>%
+  filter(week %in% 4:48) %>%
+  tidyr::pivot_wider(names_from=week, values_from=cases, names_prefix='cases');
 
 canada <- canadaCases %>%
-  filter(week == theWeek) %>%
-  filter(!province %in% provinceUnfilter);
-
-canada <- canada %>%
-  left_join(canadaGeo %>% st_transform(theCoords) %>% st_simplify(dTolerance=500), by = 'health_region') %>%
-  select(health_region, cases, pop100k, geometry, province=province.x);
-canada$HR_UID <- NULL;
+  filter(!province %in% provinceUnfilter) %>%
+  left_join(canadaGeo %>% st_transform(theCoords) %>% st_simplify(dTolerance=500) %>% select(health_region),
+            by = 'health_region');
 #ggplot(canada) +
 #  geom_sf(aes(geometry=geometry, fill=weekly / pop100k), color='#00000010') +
 #  scale_fill_fermenter(palette='GnBu', direction=1,);
@@ -311,6 +311,8 @@ usaGeo <- st_read('../input/cb_2018_us_county_20m.shp');
 usaGeo$STATEFP <- as.numeric(usaGeo$STATEFP);
 usaGeo$COUNTYFP <- as.numeric(usaGeo$COUNTYFP);
 usaGeo$fips <- usaGeo$STATEFP * 1000 + usaGeo$COUNTYFP;
+usaGeo <- usaGeo %>% st_transform(theCoords);
+#    %>% st_simplify(dTolerance=500),
 
 usaCases <- read.csv('../input/us-counties.csv');
 usaCases$date <- as.Date(usaCases$date);
@@ -328,13 +330,22 @@ usaCases <- usaCases %>% left_join(usaPop[,c('fips','POPESTIMATE2019')], by='fip
 usaCases$pop100k <- usaCases$POPESTIMATE2019/100000;
 usaCases$cumCases <- usaCases$cases;
 usaCases$cases <- pmax(usaCases$weekCases, 0);
-usa <- usaCases %>% filter(week == theWeek) %>%
+usaCases <- usaCases %>%
+  filter(week %in% 4:48 & !is.na(fips)) %>%
+  select(fips, state, pop100k, week, cases) %>%
+  tidyr::pivot_wider(names_from=week, values_from=cases, names_prefix='cases');
+
+usa <- usaCases %>%
   filter(!state %in% stateUnfilter) %>%
-  left_join(usaGeo %>% st_transform(theCoords),
-        #    %>% st_simplify(dTolerance=500),
-          by='fips') %>%
-  select(health_region=fips, cases, pop100k, geometry, province=state);
-usa$health_region <- as.character(usa$health_region);
+  left_join(usaGeo %>% select('fips'), by='fips');
+usa$province <- usa$state;
+usa$state <- NULL;
+usa$health_region <- as.character(usa$fips);
+usa$fips <- NULL;
+
+
+both <- rbind(as.data.frame(canada), as.data.frame(usa));
+
 
 canadaOutline <- st_read('../input/gpr_000b11a_e.shp') %>%
   st_simplify(dTolerance=0.01) %>% # degrees
@@ -350,8 +361,6 @@ usaOutline <- st_read('../input/cb_2018_us_state_20m.shp') %>%
   st_simplify(dTolerance=0.01) %>% # degrees
   st_transform(theCoords);
 usaOutline <- usaOutline %>% filter(!NAME %in% stateUnfilter);
-
-both <- rbind(as.data.frame(canada), as.data.frame(usa));
 
 limGTHA <- list(x = c(7150000, 7320000), y = c(870000, 980000));
 limGGH <- list(x = c(7000000, 7420000), y = c(770000, 1080000));
@@ -371,8 +380,9 @@ scale_bi <- scales::trans_new('bi',
   function(x) { ifelse(x<thresh, x, (x-thresh)/((1500-thresh)/thresh)+thresh) },
   function(x) { ifelse(x<thresh, x, (x-thresh)*((1500-thresh)/thresh)+thresh) });
 
-plotit <- function(data, interp, filename, bRate = TRUE) {
-  baseDate <- as.Date('2019-12-29') + (theWeek-1)*7;
+plotit <- function(data, week, interp, filename, bRate = TRUE) {
+  baseDate <- as.Date('2019-12-29') + (week-1)*7;
+  data <- data %>% select(pop100k, cases=paste0('cases', week), geometry, province, health_region);
   p <- ggplot(data) +
     geom_sf(aes(geometry=geometry, fill=pmin(cases / pop100k, 1500)),
             color='#00000010') +
@@ -405,10 +415,13 @@ plotit <- function(data, interp, filename, bRate = TRUE) {
   }
 }
 
-#plotit(canada, 0, '0_ggh.png');
-#plotit(both, 0, '1_ggh_usa.png');
-#plotit(both, 0.3, '2_30_percent.png');
-#plotit(both, 1.0, '3_ontario.png');
-#plotit(both, NA, '4_north_america.png');
+plotit(canada, theWeek, 0, '0_ggh.png');
+plotit(both, theWeek, 0, '1_ggh_usa.png');
+plotit(both, theWeek, 0.3, '2_30_percent.png');
+plotit(both, theWeek, 1.0, '3_ontario.png');
+plotit(both, theWeek, NA, '4_north_america.png');
 
+#for (aWeek in 20:47) {
+#  plotit(both, aWeek, 1.0, paste0('3_ontario_', aWeek, '.png'));
+#}
 
