@@ -9,7 +9,7 @@ library('ggpubr');
 theCoords <- 3347; # StatsCan Lambert
 theCoords <- st_crs(theCoords);
 # Week 47: Nov. 15-21
-theWeek <- 47;
+theWeek <- 48;
 #provinceFilter <- c('Saskatchewan', 'Manitoba','Ontario','Quebec');
 provinceUnfilter <- c('Yukon', 'NWT', 'Nunavut');
 #stateFilter <- c('Minnesota','Wiscosin','Michigan','Ohio','Pennsylvania','New York','Vermont','Massachusetts','Connecticut','Rhode Island','New Hampshire','Maine');
@@ -364,9 +364,11 @@ usaOutline <- usaOutline %>% filter(!NAME %in% stateUnfilter);
 
 limGTHA <- list(x = c(7150000, 7320000), y = c(870000, 980000));
 limGGH <- list(x = c(7000000, 7420000), y = c(770000, 1080000));
-limON <-      list(x = c(5960000, 7584000), y = c(658000, 2296600));
-limMBONQC <-  list(x = c(5508000, 8487000), y = c(658000, 3540000));
-limON_extra <-list(x = c(5508000, 8000000), y = c(280000, 2280000));
+limON <-      list(x = c(5960000, 7584000), y = c( 658000, 2296600));
+limMBONQC <-  list(x = c(5508000, 8487000), y = c( 658000, 3540000));
+limABSKMB <-  list(x = c(4427326, 6371650), y = c(1433502, 2965270));
+limABSKMB_extra <-  list(x = c(4100000, 6380000), y = c(658000, 2965270));
+limON_extra <-list(x = c(5508000, 8000000), y = c( 280000, 2280000));
 
 limInterp <- function(interp) {
   list(x = limGGH$x * (1-interp) + limON_extra$x * interp,
@@ -380,7 +382,18 @@ scale_bi <- scales::trans_new('bi',
   function(x) { ifelse(x<thresh, x, (x-thresh)/((1500-thresh)/thresh)+thresh) },
   function(x) { ifelse(x<thresh, x, (x-thresh)*((1500-thresh)/thresh)+thresh) });
 
-plotit <- function(data, week, interp, filename, bRate = TRUE) {
+plotON <- function(data, week, interp, filename) {
+  lim <- NULL;
+  bShowLabels <- FALSE;
+  labelProvinceFilter <- NA;
+  if (!is.na(interp)) {
+    lim <- limInterp(interp);
+    bShowLabels <- interp < 0.5;
+    labelProvinceFilter <- ifelse(interp < 0.3, 'Ontario', NA);
+  }
+  plotit(data, week, lim, filename, bShowLabels, labelProvinceFilter);
+}
+plotit <- function(data, week, lim, filename, bShowLabels = FALSE, labelProvinceFilter = NA) {
   baseDate <- as.Date('2019-12-29') + (week-1)*7;
   data <- data %>% select(pop100k, cases=paste0('cases', week), geometry, province, health_region);
   p <- ggplot(data) +
@@ -398,13 +411,11 @@ plotit <- function(data, week, interp, filename, bRate = TRUE) {
     ggtitle(paste0('COVID 19 Cases per 100,000 for ',
                    format.Date(baseDate, "%b %d"), '-', format.Date(baseDate+6, "%b %d")));
 
-    if (!is.na(interp)) {
-      lim <- limInterp(interp);
+    if (!is.null(lim)) {
       p <- p + coord_sf(xlim=lim$x, ylim=lim$y, expand=FALSE, crs=st_crs(3347));
-      if (interp < 0.5) {
-        provinceFilter <- ifelse(interp<0.3, 'Ontario', NA);
+      if (bShowLabels) {
         p <- p + geom_sf_text(aes(geometry=geometry,
-                        label=ifelse(province==provinceFilter,
+                        label=ifelse(province==labelProvinceFilter,
                                 paste0(health_region, '\n', round(cases/pop100k, -1)),
                                 round(cases/pop100k, -1))),
                      size=2, alpha=0.5);
@@ -413,15 +424,18 @@ plotit <- function(data, week, interp, filename, bRate = TRUE) {
   if (!is.na(filename)) {
     ggsave(filename, scale=1.5, width=5, height=4.3, units='in');
   }
+  p
 }
 
-plotit(canada, theWeek, 0, '0_ggh.png');
-plotit(both, theWeek, 0, '1_ggh_usa.png');
-plotit(both, theWeek, 0.3, '2_30_percent.png');
-plotit(both, theWeek, 1.0, '3_ontario.png');
-plotit(both, theWeek, NA, '4_north_america.png');
+plotON(canada, theWeek, 0, '0_ggh.png');
+plotON(both, theWeek, 0, '1_ggh_usa.png');
+plotON(both, theWeek, 0.3, '2_30_percent.png');
+plotON(both, theWeek, 1.0, '3_ontario.png');
+plotit(both, theWeek, NULL, '4_north_america.png');
+plotit(both, theWeek, limABSKMB_extra, '5_prairies.png');
 
-#for (aWeek in 20:47) {
-#  plotit(both, aWeek, 1.0, paste0('3_ontario_', aWeek, '.png'));
+#for (aWeek in 20:48) {
+#  plotON(both, aWeek, 1.0, paste0('3_ontario_', aWeek, '.png'));
+#  plotit(both, aWeek, limABSKMB_extra, paste0('5_prairies_', aWeek, '.png'));
 #}
 
