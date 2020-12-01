@@ -1,4 +1,4 @@
 #!/bin/sh
-sh make_crossfade.sh 3_ontario
-sh make_crossfade.sh 4_north_america
-sh make_crossfade.sh 5_prairies
+sh make_crossfade.sh ontario
+sh make_crossfade.sh north_america
+sh make_crossfade.sh prairies

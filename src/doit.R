@@ -11,7 +11,7 @@ theCoords <- st_crs(theCoords);
 # Week 47: Nov. 15-21
 theWeek <- 48;
 #provinceFilter <- c('Saskatchewan', 'Manitoba','Ontario','Quebec');
-provinceUnfilter <- c('Yukon', 'NWT', 'Nunavut');
+provinceUnfilter <- c();#'Yukon', 'NWT', 'Nunavut');
 #stateFilter <- c('Minnesota','Wiscosin','Michigan','Ohio','Pennsylvania','New York','Vermont','Massachusetts','Connecticut','Rhode Island','New Hampshire','Maine');
 stateUnfilter <- c('Hawaii','Alaska','Puerto Rico','Virgin Islands','Northern Mariana Islands');
 
@@ -26,7 +26,10 @@ canadaFiles <- c(
   Manitoba = 'HR_046b18a_e',
   Saskatchewan = 'HR_047b18a_e',
   Alberta = 'HR_048b18a_e',
-  BC = 'HR_059b18a_e');
+  BC = 'HR_059b18a_e',
+  Yukon = 'HR_060b18a_e',
+  NWT = 'HR_061b18a_e',
+  Nunavut = 'HR_062b18a_e');
 for (i in 1:length(canadaFiles)) {
   canadaFile <- canadaFiles[i];
   foo <- st_read(paste0('../input/', canadaFile, '/', canadaFile, ".shp"));
@@ -131,18 +134,20 @@ canadaGeo$health_region <- forcats::fct_recode(canadaGeo$HR_UID,
   Saguenay=2402,
   "Terres-Cries-de-la-Baie-James"=2418,
   
-  # PEI & NB & NS names match
+  # PEI & NB & NS & Yukon & Nunavut names match
   
   Central=1011,
   "Labrador-Grenfell"=1012,
   Western=1013,
-  "Eastern NL"=1014),
+  "Eastern NL"=1014,
+  
+  'NWT'=6101),
   as.character)));
 
 # health_region == ENGNAME for these provinces
 # Sadly, province field seems to be absent from cartographic shape files.
 #hrFilter <- canadaGeo$province %in% c('PEI', 'New Brunswick', 'Nova Scotia');
-hrFilter <- floor(as.numeric(levels(canadaGeo$HR_UID)[canadaGeo$HR_UID])/100) %in% 11:13;
+hrFilter <- floor(as.numeric(levels(canadaGeo$HR_UID)[canadaGeo$HR_UID])/100) %in% c(11:13,60,62);
 canadaGeo$health_region <- as.character(canadaGeo$health_region);
 canadaGeo$health_region[hrFilter] <- as.character(canadaGeo$ENGNAME[hrFilter]);
 canadaGeo$health_region <- factor(canadaGeo$health_region);
@@ -282,8 +287,11 @@ pops <- unlist(list(
   Central=92690,
   "Labrador-Grenfell"=36072,
   Western=77687,
-  "Eastern NL"=313267
-  ));
+  "Eastern NL"=313267,
+  
+  Yukon=35874,
+  NWT=41786,
+  Nunavut=35944));
 canadaCases$date_report <- as.Date(canadaCases$date_report, '%d-%m-%Y');
 pops <- data.frame(health_region=factor(names(pops), levels=levels(canadaCases$health_region)), pop100k=pops/100000);
 canadaCases <- canadaCases %>%
@@ -367,7 +375,7 @@ limGGH <- list(x = c(7000000, 7420000), y = c(770000, 1080000));
 limON <-      list(x = c(5960000, 7584000), y = c( 658000, 2296600));
 limMBONQC <-  list(x = c(5508000, 8487000), y = c( 658000, 3540000));
 limABSKMB <-  list(x = c(4427326, 6371650), y = c(1433502, 2965270));
-limABSKMB_extra <-  list(x = c(4100000, 6380000), y = c(658000, 2965270));
+limABSKMB_extra <-  list(x = c(4100000, 6380000), y = c(658000, 2970000));
 limON_extra <-list(x = c(5508000, 8000000), y = c( 280000, 2280000));
 
 limInterp <- function(interp) {
@@ -381,6 +389,14 @@ thresh = 300;
 scale_bi <- scales::trans_new('bi',
   function(x) { ifelse(x<thresh, x, (x-thresh)/((1500-thresh)/thresh)+thresh) },
   function(x) { ifelse(x<thresh, x, (x-thresh)*((1500-thresh)/thresh)+thresh) });
+
+# Non-exported ggplot2 function
+#binned_pal <- function(palette) {
+#  function(x) {
+#    palette(length(x))
+#  }
+#}
+#    ggplot2::binned_scale("fill", "fermenter", binned_pal(brewer_pal('seq','GnBu', 1)), na.value = 'grey50', guide = 'coloursteps')
 
 plotON <- function(data, week, interp, filename) {
   lim <- NULL;
@@ -397,11 +413,12 @@ plotit <- function(data, week, lim, filename, bShowLabels = FALSE, labelProvince
   baseDate <- as.Date('2019-12-29') + (week-1)*7;
   data <- data %>% select(pop100k, cases=paste0('cases', week), geometry, province, health_region);
   p <- ggplot(data) +
-    geom_sf(aes(geometry=geometry, fill=pmin(cases / pop100k, 1500)),
+    geom_sf(aes(geometry=geometry, fill=cases / pop100k),
             color='#00000010') +
-    scale_fill_distiller(palette='GnBu', direction=1,
-                         trans=scale_bi, breaks = c(1:3*100, 2:5*thresh),
-                         limits = c(0, 1500)) +
+    scale_fill_fermenter(palette='GnBu', direction=1,
+                         #trans=scale_bi,
+                         breaks = c(25,1:4*100, 700, 1000, 1300),
+                         limits = c(0, 1600)) +
     geom_sf(data=canadaOutline, aes(geometry=geometry), colour='black', alpha=0.5, fill=NA, size=0.1) +
     geom_sf(data=usaOutline, aes(geometry=geometry), colour='black', alpha=0.5, fill=NA, size=0.1) +
     theme_minimal() +
@@ -434,8 +451,11 @@ plotON(both, theWeek, 1.0, '3_ontario.png');
 plotit(both, theWeek, NULL, '4_north_america.png');
 plotit(both, theWeek, limABSKMB_extra, '5_prairies.png');
 
-#for (aWeek in 20:48) {
-#  plotON(both, aWeek, 1.0, paste0('3_ontario_', aWeek, '.png'));
-#  plotit(both, aWeek, limABSKMB_extra, paste0('5_prairies_', aWeek, '.png'));
-#}
+stop();
+
+for (aWeek in 20:48) {
+  plotON(both, aWeek, 1.0, paste0('ontario_', aWeek, '.png'));
+  plotit(both, aWeek, NULL, paste0('north_america_', aWeek, '.png'));
+  plotit(both, aWeek, limABSKMB_extra, paste0('prairies_', aWeek, '.png'));
+}
 
