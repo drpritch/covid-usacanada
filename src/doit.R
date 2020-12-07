@@ -9,7 +9,7 @@ library('ggpubr');
 theCoords <- 3347; # StatsCan Lambert
 theCoords <- st_crs(theCoords);
 # Week 47: Nov. 15-21
-theWeek <- 48;
+theWeek <- 49;
 #provinceFilter <- c('Saskatchewan', 'Manitoba','Ontario','Quebec');
 provinceUnfilter <- c();#'Yukon', 'NWT', 'Nunavut');
 #stateFilter <- c('Minnesota','Wiscosin','Michigan','Ohio','Pennsylvania','New York','Vermont','Massachusetts','Connecticut','Rhode Island','New Hampshire','Maine');
@@ -187,111 +187,112 @@ huronPerth <- canadaGeo %>% filter(HR_UID %in% c(3539,3554)) %>%
 canadaGeo <- rbind(canadaGeo, st_union(huronPerth[1,], huronPerth[2,])[,1:7]);
 
 pops <- unlist(list(
-  Fraser=295763+639245+784977,
-  Interior=79856+78463+362258+219467,
-  Island=270817+122233+383360,
-  'Vancouver Coastal'=284389+198309+649028,
-  'Northern BC'=71553+67885+140452,
+  Fraser=1902586,
+  Interior=805216,
+  Island=846030,
+  'Vancouver Coastal'=1219436,
+  'Northern BC'=298068,
   
-  Calgary=1551876,
-  Edmonton=1320798,
-  'Central Alberta'=461553,
-  'North Alberta'=441836,
-  'South Alberta'=291112,
+  Calgary=1680755,
+  Edmonton=1443597,
+  'Central Alberta'=479601,
+  'North Alberta'=460964,
+  'South Alberta'=306399,
   
-  'Central Saskatchewan'=55094+41890,
-  'Far North'=22282+10539+2632,
-  'North Saskatchewan'=39574+75637+75147,
-  Regina=278281,
-  Saskatoon=344458,
-  'South Saskatchewan'=56230+53261+42967,
+  'Central Saskatchewan'=98566,
+  'Far North'=37811,
+  'North Saskatchewan'=196246,
+  Regina=304261,
+  Saskatoon=380403,
+  'South Saskatchewan'=157175,
     
-  'Interlake-Eastern'=127601,
-  'Northern Manitoba'=72220,
-  'Prairie Mountain'=165600,
-  'Southern Health'=192061,
-  Winnipeg=720883,
+  'Interlake-Eastern'=133882,
+  'Northern Manitoba'=75783,
+  'Prairie Mountain'=171368,
+  'Southern Health'=208018,
+  Winnipeg=780414,
   
-  Algoma=113084,
-  Brant=134943,
-  'Chatham-Kent'=102042,
-  Durham=645862,
-  'Eastern Ontario'=202762,
-  'Grey Bruce'=161977,
-  'Haldimand-Norfolk'=109652,
-  'Haliburton Kawartha Pineridge'=179083,
-  Halton=548430,
-  Hamilton=536917,
-  'Hastings Prince Edward'=161180,
-  'Huron Perth'=59297+76796,
-  "Kingston Frontenac Lennox & Addington"=193363,
-  Lambton=126638,
-  "Leeds Grenville and Lanark"=169244,
-  "Middlesex-London"=455526,
-  Niagara=447888,
-  "North Bay Parry Sound"=123820,
-  Northwestern=76455,
-  Ottawa=934243,
-  Peel=1381744,
-  Peterborough=138236,
-  Porcupine=84201,
-  Renfrew=103593,
-  "Simcoe Muskoka"=540249,                  
-  Southwestern=88978+110862,
-  Sudbury=196448,
-  "Thunder Bay"=151884,
-  Timiskaming=33049,
-  Toronto=2731571,
-  Waterloo=535154,
-  "Wellington Dufferin Guelph"=284461,
-  "Windsor-Essex"=398953,
-  York=1109909,
+  Algoma=117036,
+  Brant=151034,
+  'Chatham-Kent'=106091,
+  Durham=697355,
+  'Eastern Ontario'=213064,
+  'Grey Bruce'=173372,
+  'Haldimand-Norfolk'=119146,
+  'Haliburton Kawartha Pineridge'=189982,
+  Halton=596363,
+  Hamilton=574263,
+  'Hastings Prince Edward'=170793,
+  'Huron Perth'=144801,
+  "Kingston Frontenac Lennox & Addington"=208613,
+  Lambton=132243,
+  "Leeds Grenville and Lanark"=177605,
+  "Middlesex-London"=506008,
+  Niagara=479183,
+  "North Bay Parry Sound"=129642,
+  Northwestern=81472,
+  Ottawa=1028514,
+  Peel=1542001,
+  Peterborough=147908,
+  Porcupine=85422,
+  Renfrew=107955,
+  "Simcoe Muskoka"=594494,                  
+  Southwestern=215401,
+  Sudbury=204640,
+  "Thunder Bay"=158165,
+  Timiskaming=33800,
+  Toronto=2965712,
+  Waterloo=595465,
+  "Wellington Dufferin Guelph"=308963,
+  "Windsor-Essex"=428556,
+  York=1181485,
   
-  "Abitibi-Témiscamingue"=146717,
-  "Bas-Saint-Laurent"=197385,
-  "Capitale-Nationale"=729997,
-  "Chaudière-Appalaches"=420082,        
-  "Côte-Nord"=92518,
-  Estrie=472615,
-  "Gaspésie-Îles-de-la-Madeleine"=90311,
-  Lanaudière=494796,
-  Laurentides=589400,
-  Laval=422993,
-  Mauricie=508511,
-  Montérégie=1353459,
-  Montréal=1942044,
-  "Nord-du-Québec"=14232,
+  "Abitibi-Témiscamingue"=147542,
+  "Bas-Saint-Laurent"=197322,
+  "Capitale-Nationale"=750645,
+  "Chaudière-Appalaches"=428618,
+  "Côte-Nord"=90704,
+  Estrie=489479,
+  "Gaspésie-Îles-de-la-Madeleine"=90334,
+  Lanaudière=515448,
+  Laurentides=620264,
+  Laval=438973,
+  Mauricie=520285,
+  Montérégie=1421586,
+  Montréal=2052910,
+  "Nord-du-Québec"=13633,
   #"Not Reported"
-  Nunavik=13188,
-  Outaouais=382604,
-  Saguenay=276368,
-  "Terres-Cries-de-la-Baie-James"=17141,
+  Nunavik=14102,
+  Outaouais=397193,
+  Saguenay=277796,
+  "Terres-Cries-de-la-Baie-James"=18131,
   
-  "Prince Edward Island"=142907,
+  "Prince Edward Island"=156947,
   
   # New Brunswick
-  "Zone 1 (Moncton area)"=209256,
-  "Zone 2 (Saint John area)"=170537,
-  "Zone 3 (Fredericton area)"=174348,
-  "Zone 4 (Edmundston area)"=47775,
-  "Zone 5 (Campbellton area)"=25250,
-  "Zone 6 (Bathurst area)"=76374,
-  "Zone 7 (Miramichi area)"=43561,
+  "Zone 1 (Moncton area)"=222694,
+  "Zone 2 (Saint John area)"=176280,
+  "Zone 3 (Fredericton area)"=183421,
+  "Zone 4 (Edmundston area)"=48254,
+  "Zone 5 (Campbellton area)"=25199,
+  "Zone 6 (Bathurst area)"=76763,
+  "Zone 7 (Miramichi area)"=44216,
   
   # Nova Scotia
-  "Zone 1 - Western"=194376,
-  "Zone 2 - Northern"=146249,
-  "Zone 3 - Eastern"=158936,
-  "Zone 4 - Central"=424037,
+  "Zone 1 - Western"=199165,
+  "Zone 2 - Northern"=148470,
+  "Zone 3 - Eastern"=162088,
+  "Zone 4 - Central"=461672,
   
-  Central=92690,
-  "Labrador-Grenfell"=36072,
-  Western=77687,
-  "Eastern NL"=313267,
+  Central=91201,
+  "Labrador-Grenfell"=36069,
+  Western=76608,
+  "Eastern NL"=317664,
   
-  Yukon=35874,
-  NWT=41786,
-  Nunavut=35944));
+  Yukon=40854,
+  NWT=44826,
+  Nunavut=38780));
+
 canadaCases$date_report <- as.Date(canadaCases$date_report, '%d-%m-%Y');
 pops <- data.frame(health_region=factor(names(pops), levels=levels(canadaCases$health_region)), pop100k=pops/100000);
 canadaCases <- canadaCases %>%
@@ -303,7 +304,7 @@ canadaCases <- canadaCases %>%
 # and week 47 = Nov. 15-21
 canadaCases <- canadaCases %>% group_by(health_region, province, pop100k, week = lubridate::week(date_report + 3)) %>%
   summarise(cases=sum(cases)) %>%
-  filter(week %in% 4:48) %>%
+  filter(week < 50) %>%
   tidyr::pivot_wider(names_from=week, values_from=cases, names_prefix='cases');
 
 canada <- canadaCases %>%
@@ -339,7 +340,7 @@ usaCases$pop100k <- usaCases$POPESTIMATE2019/100000;
 usaCases$cumCases <- usaCases$cases;
 usaCases$cases <- pmax(usaCases$weekCases, 0);
 usaCases <- usaCases %>%
-  filter(week %in% 4:48 & !is.na(fips)) %>%
+  filter(!is.na(fips)) %>%
   select(fips, state, pop100k, week, cases) %>%
   tidyr::pivot_wider(names_from=week, values_from=cases, names_prefix='cases');
 
@@ -377,6 +378,7 @@ limMBONQC <-  list(x = c(5508000, 8487000), y = c( 658000, 3540000));
 limABSKMB <-  list(x = c(4427326, 6371650), y = c(1433502, 2965270));
 limABSKMB_extra <-  list(x = c(4100000, 6380000), y = c(658000, 2970000));
 limON_extra <-list(x = c(5508000, 8000000), y = c( 280000, 2280000));
+limNA <- list(x = c(3415360, 9015737), y = c(-1398365, 4360410));
 
 limInterp <- function(interp) {
   list(x = limGGH$x * (1-interp) + limON_extra$x * interp,
@@ -384,19 +386,6 @@ limInterp <- function(interp) {
 }
 lim <- limInterp(1);
 
-
-thresh = 300;
-scale_bi <- scales::trans_new('bi',
-  function(x) { ifelse(x<thresh, x, (x-thresh)/((1500-thresh)/thresh)+thresh) },
-  function(x) { ifelse(x<thresh, x, (x-thresh)*((1500-thresh)/thresh)+thresh) });
-
-# Non-exported ggplot2 function
-#binned_pal <- function(palette) {
-#  function(x) {
-#    palette(length(x))
-#  }
-#}
-#    ggplot2::binned_scale("fill", "fermenter", binned_pal(brewer_pal('seq','GnBu', 1)), na.value = 'grey50', guide = 'coloursteps')
 
 plotON <- function(data, week, interp, filename) {
   lim <- NULL;
@@ -407,19 +396,18 @@ plotON <- function(data, week, interp, filename) {
     bShowLabels <- interp < 0.5;
     labelProvinceFilter <- ifelse(interp < 0.3, 'Ontario', NA);
   }
-  plotit(data, week, lim, filename, bShowLabels, labelProvinceFilter);
+  plotit(data, week, lim, filename, bShowLabels, labelProvinceFilter, theCanadaOutline = canadaOutline);
 }
-plotit <- function(data, week, lim, filename, bShowLabels = FALSE, labelProvinceFilter = NA) {
+plotit <- function(data, week, lim, filename, bShowLabels = FALSE, labelProvinceFilter = NA, theCanadaOutline = canadaOutline) {
   baseDate <- as.Date('2019-12-29') + (week-1)*7;
   data <- data %>% select(pop100k, cases=paste0('cases', week), geometry, province, health_region);
   p <- ggplot(data) +
     geom_sf(aes(geometry=geometry, fill=cases / pop100k),
             color='#00000010') +
     scale_fill_fermenter(palette='GnBu', direction=1,
-                         #trans=scale_bi,
                          breaks = c(25,1:4*100, 700, 1000, 1300),
                          limits = c(0, 1600)) +
-    geom_sf(data=canadaOutline, aes(geometry=geometry), colour='black', alpha=0.5, fill=NA, size=0.1) +
+    geom_sf(data=theCanadaOutline, aes(geometry=geometry), colour='black', alpha=0.5, fill=NA, size=0.1) +
     geom_sf(data=usaOutline, aes(geometry=geometry), colour='black', alpha=0.5, fill=NA, size=0.1) +
     theme_minimal() +
     labs(fill='Weekly cases/100,000',x=NULL,y=NULL,
@@ -444,18 +432,17 @@ plotit <- function(data, week, lim, filename, bShowLabels = FALSE, labelProvince
   p
 }
 
-plotON(canada, theWeek, 0, '0_ggh.png');
+canadaOutlineSimplified <- canadaOutline %>% st_simplify(dTolerance = 0.1);
+
+#plotON(canada, theWeek, 0, '0_ggh.png');
 plotON(both, theWeek, 0, '1_ggh_usa.png');
 plotON(both, theWeek, 0.3, '2_30_percent.png');
 plotON(both, theWeek, 1.0, '3_ontario.png');
-plotit(both, theWeek, NULL, '4_north_america.png');
+plotit(both, theWeek, limNA, '4_north_america.png', theCanadaOutline = canadaOutlineSimplified);
 plotit(both, theWeek, limABSKMB_extra, '5_prairies.png');
 
-stop();
-
-for (aWeek in 20:48) {
+for (aWeek in 20:49) {
   plotON(both, aWeek, 1.0, paste0('ontario_', aWeek, '.png'));
-  plotit(both, aWeek, NULL, paste0('north_america_', aWeek, '.png'));
+  plotit(both, aWeek, limNA, paste0('north_america_', aWeek, '.png'), theCanadaOutline = canadaOutlineSimplified);
   plotit(both, aWeek, limABSKMB_extra, paste0('prairies_', aWeek, '.png'));
 }
-
