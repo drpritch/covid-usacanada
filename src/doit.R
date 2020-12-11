@@ -9,7 +9,8 @@ library('ggpubr');
 theCoords <- 3347; # StatsCan Lambert
 theCoords <- st_crs(theCoords);
 # Week 47: Nov. 15-21
-theWeek <- 49;
+theWeek <- 50;
+maxWeek <- theWeek;
 #provinceFilter <- c('Saskatchewan', 'Manitoba','Ontario','Quebec');
 provinceUnfilter <- c();#'Yukon', 'NWT', 'Nunavut');
 #stateFilter <- c('Minnesota','Wiscosin','Michigan','Ohio','Pennsylvania','New York','Vermont','Massachusetts','Connecticut','Rhode Island','New Hampshire','Maine');
@@ -43,37 +44,37 @@ for (i in 1:length(canadaFiles)) {
 canadaCases <- read.csv('../input/cases_timeseries_hr.csv');
 canadaCases$health_region <- factor(canadaCases$health_region);
 levels(canadaCases$health_region) <- c(levels(canadaCases$health_region),
-    'Central Alberta', 'Central Saskatchewan',
-    'North Alberta', 'North Saskatchewan',
-    'South Alberta', 'South Saskatchewan',
-    'Eastern Ontario', 'Eastern NL',
-    'Northern Manitoba', 'Northern BC');
-disambiguateRegion <- function(canadaCases, region, province1, province2) {
-  canadaCases[canadaCases$health_region == region & canadaCases$province == province1,]$health_region = paste0(region, ' ', province1);
-  canadaCases[canadaCases$health_region == region & canadaCases$province == province2,]$health_region = paste0(region, ' ', province2);
+    'Central AB', 'Central SK',
+    'North AB', 'North SK',
+    'South AB', 'South SK',
+    'Eastern ON', 'Eastern NL',
+    'Northern MB', 'Northern BC');
+disambiguateRegion <- function(canadaCases, region, province1, abbrev1, province2, abbrev2) {
+  canadaCases[canadaCases$health_region == region & canadaCases$province == province1,]$health_region = paste0(region, ' ', abbrev1);
+  canadaCases[canadaCases$health_region == region & canadaCases$province == province2,]$health_region = paste0(region, ' ', abbrev2);
   canadaCases;
 }
-canadaCases <- disambiguateRegion(canadaCases, 'Central', 'Alberta', 'Saskatchewan');
-canadaCases <- disambiguateRegion(canadaCases, 'North', 'Alberta', 'Saskatchewan');
-canadaCases <- disambiguateRegion(canadaCases, 'South', 'Alberta', 'Saskatchewan');
-canadaCases <- disambiguateRegion(canadaCases, 'Eastern', 'Ontario', 'NL');
-canadaCases <- disambiguateRegion(canadaCases, 'Northern', 'Manitoba', 'BC');
+canadaCases <- disambiguateRegion(canadaCases, 'Central', 'Alberta', 'AB', 'Saskatchewan', 'SK');
+canadaCases <- disambiguateRegion(canadaCases, 'North', 'Alberta', 'AB', 'Saskatchewan', 'SK');
+canadaCases <- disambiguateRegion(canadaCases, 'South', 'Alberta', 'AB', 'Saskatchewan', 'SK');
+canadaCases <- disambiguateRegion(canadaCases, 'Eastern', 'Ontario', 'ON', 'NL', 'NL');
+canadaCases <- disambiguateRegion(canadaCases, 'Northern', 'Manitoba', 'MB', 'BC', 'BC');
 
 canadaGeo$province <- factor(canadaGeo$province, levels=levels(canadaCases$province));
 canadaGeo$HR_UID <- factor(as.numeric(canadaGeo$HR_UID));
 canadaGeo$health_region <- forcats::fct_recode(canadaGeo$HR_UID,
   !!!unlist(lapply(list(
-    'South Alberta'=4831,
+    'South AB'=4831,
     Calgary=4832,
-    'Central Alberta'=4833,
+    'Central AB'=4833,
     Edmonton=4834,
-    'North Alberta'=4835,
+    'North AB'=4835,
     
     Regina=4704,
     Saskatoon=4706,
     
     'Interlake-Eastern'=4603,
-    'Northern Manitoba'=4604,
+    'Northern MB'=4604,
     'Prairie Mountain'=4602,
     'Southern Health'=4605,
     Winnipeg=4601,
@@ -82,7 +83,7 @@ canadaGeo$health_region <- forcats::fct_recode(canadaGeo$HR_UID,
     Brant=3527,
     'Chatham-Kent'=3540,
     Durham=3530,
-    'Eastern Ontario'=3558,
+    'Eastern ON'=3558,
     'Grey Bruce'=3533,
     'Haldimand-Norfolk'=3534,
     'Haliburton Kawartha Pineridge'=3535,
@@ -173,13 +174,13 @@ sask <- canadaGeo %>% filter(HR_UID %in% 4711:4713) %>%
     mutate(health_region = 'Far North');
 canadaGeo <- rbind(canadaGeo, st_union(st_union(sask[1,], sask[2,]), sask[3,])[,1:7]);
 sask <- canadaGeo %>% filter(HR_UID %in% 4708:4710) %>%
-    mutate(health_region = 'North Saskatchewan');
+    mutate(health_region = 'North SK');
 canadaGeo <- rbind(canadaGeo, st_union(st_union(sask[1,], sask[2,]), sask[3,])[,1:7]);
 sask <- canadaGeo %>% filter(HR_UID %in% c(4705,4707)) %>%
-  mutate(health_region = 'Central Saskatchewan');
+  mutate(health_region = 'Central SK');
 canadaGeo <- rbind(canadaGeo, st_union(sask[1,], sask[2,])[,1:7]);
 sask <- canadaGeo %>% filter(HR_UID %in% 4701:4703) %>%
-  mutate(health_region = 'South Saskatchewan');
+  mutate(health_region = 'South SK');
 canadaGeo <- rbind(canadaGeo, st_union(st_union(sask[1,], sask[2,]), sask[3,])[,1:7]);
 
 huronPerth <- canadaGeo %>% filter(HR_UID %in% c(3539,3554)) %>%
@@ -195,19 +196,19 @@ pops <- unlist(list(
   
   Calgary=1680755,
   Edmonton=1443597,
-  'Central Alberta'=479601,
-  'North Alberta'=460964,
-  'South Alberta'=306399,
+  'Central AB'=479601,
+  'North AB'=460964,
+  'South AB'=306399,
   
-  'Central Saskatchewan'=98566,
+  'Central SK'=98566,
   'Far North'=37811,
-  'North Saskatchewan'=196246,
+  'North SK'=196246,
   Regina=304261,
   Saskatoon=380403,
-  'South Saskatchewan'=157175,
+  'South SK'=157175,
     
   'Interlake-Eastern'=133882,
-  'Northern Manitoba'=75783,
+  'Northern MB'=75783,
   'Prairie Mountain'=171368,
   'Southern Health'=208018,
   Winnipeg=780414,
@@ -216,7 +217,7 @@ pops <- unlist(list(
   Brant=151034,
   'Chatham-Kent'=106091,
   Durham=697355,
-  'Eastern Ontario'=213064,
+  'Eastern ON'=213064,
   'Grey Bruce'=173372,
   'Haldimand-Norfolk'=119146,
   'Haliburton Kawartha Pineridge'=189982,
@@ -304,7 +305,7 @@ canadaCases <- canadaCases %>%
 # and week 47 = Nov. 15-21
 canadaCases <- canadaCases %>% group_by(health_region, province, pop100k, week = lubridate::week(date_report + 3)) %>%
   summarise(cases=sum(cases)) %>%
-  filter(week < 50) %>%
+  filter(week <= maxWeek) %>%
   tidyr::pivot_wider(names_from=week, values_from=cases, names_prefix='cases');
 
 canada <- canadaCases %>%
@@ -341,18 +342,22 @@ usaCases$cumCases <- usaCases$cases;
 usaCases$cases <- pmax(usaCases$weekCases, 0);
 usaCases <- usaCases %>%
   filter(!is.na(fips)) %>%
-  select(fips, state, pop100k, week, cases) %>%
-  tidyr::pivot_wider(names_from=week, values_from=cases, names_prefix='cases');
+  select(fips, health_region = county, state, pop100k, week, cases) %>%
+  tidyr::pivot_wider(names_from=week, values_from=cases, names_prefix='cases', values_fill=0);
 
 usa <- usaCases %>%
   filter(!state %in% stateUnfilter) %>%
   left_join(usaGeo %>% select('fips'), by='fips');
 usa$province <- usa$state;
 usa$state <- NULL;
-usa$health_region <- as.character(usa$fips);
+
+usa$id <- as.character(usa$fips);
 usa$fips <- NULL;
+usa$country <- 'usa';
 
-
+# Unique id
+canada$id <- canada$health_region;
+canada$country <- 'canada';
 both <- rbind(as.data.frame(canada), as.data.frame(usa));
 
 
@@ -387,22 +392,29 @@ limInterp <- function(interp) {
 lim <- limInterp(1);
 
 
+# For midweek approx graphs - e.g., 7/4 to scale up from 4 to 7 days.
+scaleFactor <- 1;
+
 plotON <- function(data, week, interp, filename) {
   lim <- NULL;
   bShowLabels <- FALSE;
-  labelProvinceFilter <- NA;
   if (!is.na(interp)) {
     lim <- limInterp(interp);
-    bShowLabels <- interp < 0.5;
-    labelProvinceFilter <- ifelse(interp < 0.3, 'Ontario', NA);
+    if (interp < 0.3) {
+      bShowLabels <- 'both';
+    } else if (interp < 0.5) {
+      bShowLabels <- 'trim';
+    }
   }
-  plotit(data, week, lim, filename, bShowLabels, labelProvinceFilter, theCanadaOutline = canadaOutline);
+  plotit(data, week, lim, filename, bShowLabels, theCanadaOutline = canadaOutline);
 }
-plotit <- function(data, week, lim, filename, bShowLabels = FALSE, labelProvinceFilter = NA, theCanadaOutline = canadaOutline) {
+plotit <- function(data, week, lim, filename, bShowLabels = FALSE, theCanadaOutline = canadaOutline) {
   baseDate <- as.Date('2019-12-29') + (week-1)*7;
-  data <- data %>% select(pop100k, cases=paste0('cases', week), geometry, province, health_region);
+  data <- data %>% select(pop100k, cases=paste0('cases', week), geometry, province, health_region, country);
+  data$titleTrim <- substr(data$health_region, 0, 10);
+  data$titleTrim[data$country=='usa'] <- substr(data$titleTrim[data$country=='usa'], 0, 3);
   p <- ggplot(data) +
-    geom_sf(aes(geometry=geometry, fill=cases / pop100k),
+    geom_sf(aes(geometry=geometry, fill=cases / pop100k * scaleFactor),
             color='#00000010') +
     scale_fill_fermenter(palette='GnBu', direction=1,
                          breaks = c(25,1:4*100, 700, 1000, 1300),
@@ -418,12 +430,27 @@ plotit <- function(data, week, lim, filename, bShowLabels = FALSE, labelProvince
 
     if (!is.null(lim)) {
       p <- p + coord_sf(xlim=lim$x, ylim=lim$y, expand=FALSE, crs=st_crs(3347));
-      if (bShowLabels) {
+      if (bShowLabels == 'both') {
         p <- p + geom_sf_text(aes(geometry=geometry,
-                        label=ifelse(province==labelProvinceFilter,
-                                paste0(health_region, '\n', round(cases/pop100k, -1)),
-                                round(cases/pop100k, -1))),
+                        label=paste0(health_region, '\n', round(cases/pop100k * scaleFactor, -1))),
                      size=2, alpha=0.5);
+      }
+      else if (bShowLabels == 'canada') {
+        p <- p + geom_sf_text(data = data %>% filter(country=='canada'),
+                              aes(geometry=geometry,
+                                  label=paste0(health_region, '\n', round(cases/pop100k * scaleFactor, -1))),
+                              size=2, alpha=0.5);
+      }
+      else if (bShowLabels == 'trim') {
+        p <- p + geom_sf_text(aes(geometry=geometry,
+                                  label=paste0(titleTrim, '\n', round(cases/pop100k * scaleFactor, -1))),
+                              size=1.5, alpha=0.5);
+      }
+      else if (bShowLabels == 'trimCanada') {
+        p <- p + geom_sf_text(data = data %>% filter(country=='canada'),
+                              aes(geometry=geometry,
+                                  label=paste0(titleTrim, '\n', round(cases/pop100k * scaleFactor, -1))),
+                              size=1.5, alpha=0.5);
       }
     }
   if (!is.na(filename)) {
@@ -439,9 +466,11 @@ plotON(both, theWeek, 0, '1_ggh_usa.png');
 plotON(both, theWeek, 0.3, '2_30_percent.png');
 plotON(both, theWeek, 1.0, '3_ontario.png');
 plotit(both, theWeek, limNA, '4_north_america.png', theCanadaOutline = canadaOutlineSimplified);
-plotit(both, theWeek, limABSKMB_extra, '5_prairies.png');
+plotit(both, theWeek, limABSKMB_extra, '5_prairies.png', 'canada');
 
-for (aWeek in 20:49) {
+stop();
+
+for (aWeek in 20:maxWeek) {
   plotON(both, aWeek, 1.0, paste0('ontario_', aWeek, '.png'));
   plotit(both, aWeek, limNA, paste0('north_america_', aWeek, '.png'), theCanadaOutline = canadaOutlineSimplified);
   plotit(both, aWeek, limABSKMB_extra, paste0('prairies_', aWeek, '.png'));
