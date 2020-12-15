@@ -3,6 +3,7 @@ library('dplyr');
 library('ggplot2');
 library('ggpubr');
 
+#theCoords <- 26911; #UTM11N
 #theCoords <- 26917; #UTM17N
 #theCoords <- 4269; # NAD 83
 #theCoords <- 4326; # WGS 84
@@ -312,6 +313,10 @@ canada <- canadaCases %>%
   filter(!province %in% provinceUnfilter) %>%
   left_join(canadaGeo %>% st_transform(theCoords) %>% st_simplify(dTolerance=500) %>% select(health_region),
             by = 'health_region');
+canada11N <- canadaCases %>%
+  filter(!province %in% provinceUnfilter) %>%
+  left_join(canadaGeo %>% st_transform(26911) %>% st_simplify(dTolerance=500) %>% select(health_region),
+            by = 'health_region');
 #ggplot(canada) +
 #  geom_sf(aes(geometry=geometry, fill=weekly / pop100k), color='#00000010') +
 #  scale_fill_fermenter(palette='GnBu', direction=1,);
@@ -345,20 +350,29 @@ usaCases <- usaCases %>%
   select(fips, health_region = county, state, pop100k, week, cases) %>%
   tidyr::pivot_wider(names_from=week, values_from=cases, names_prefix='cases', values_fill=0);
 
-usa <- usaCases %>%
-  filter(!state %in% stateUnfilter) %>%
-  left_join(usaGeo %>% select('fips'), by='fips');
-usa$province <- usa$state;
-usa$state <- NULL;
+makeUSA <- function(crs=theCoords) {
+  usa <- usaCases %>%
+    filter(!state %in% stateUnfilter) %>%
+    left_join(usaGeo %>% st_transform(st_crs(crs)) %>% select('fips'), by='fips');
+  usa$province <- usa$state;
+  usa$state <- NULL;
+  usa$id <- as.character(usa$fips);
+  usa$fips <- NULL;
+  usa$country <- 'usa';
+  usa;
+}
+usa <- makeUSA();
+usa11N <- makeUSA(26911);
 
-usa$id <- as.character(usa$fips);
-usa$fips <- NULL;
-usa$country <- 'usa';
+
 
 # Unique id
 canada$id <- canada$health_region;
 canada$country <- 'canada';
+canada11N$id <- canada11N$health_region;
+canada11N$country <- 'canada';
 both <- rbind(as.data.frame(canada), as.data.frame(usa));
+both11N <- rbind(as.data.frame(canada11N), as.data.frame(usa11N));
 
 
 canadaOutline <- st_read('../input/gpr_000b11a_e.shp') %>%
@@ -382,14 +396,26 @@ limON <-      list(x = c(5960000, 7584000), y = c( 658000, 2296600));
 limMBONQC <-  list(x = c(5508000, 8487000), y = c( 658000, 3540000));
 limABSKMB <-  list(x = c(4427326, 6371650), y = c(1433502, 2965270));
 limABSKMB_extra <-  list(x = c(4100000, 6380000), y = c(658000, 2970000));
-limON_extra <-list(x = c(5508000, 8000000), y = c( 280000, 2280000));
+limON_extra <- list(x = c(5508000, 8000000), y = c( 280000, 2280000));
+limBC <- list(x = c(3700000, 4800000), y = c(1500000, 2300000));
+limBC_11N <- list(x = c(-300000, 1000000), y = c(5000000, 5800000));
 limNA <- list(x = c(3415360, 9015737), y = c(-1398365, 4360410));
 
+# a southern Ontario view
+limON30 <- list(x = c(6702400, 7804000), y = c(480000, 1340000));
+limWindsor <- list(x = c(6702400, 7304000), y = c(440000, 980000));
 limInterp <- function(interp) {
-  list(x = limGGH$x * (1-interp) + limON_extra$x * interp,
-                  y = limGGH$y * (1-interp) + limON_extra$y * interp)
+  if (interp < 0.3) {
+    interp <- interp / 0.3;
+    result <- list(x = limGGH$x * (1-interp) + limON30$x * interp,
+         y = limGGH$y * (1-interp) + limON30$y * interp);
+  } else {
+    interp <- (interp - 0.3)/0.7;
+    result <- list(x = limON30$x * (1-interp) + limON_extra$x * interp,
+                    y = limON30$y * (1-interp) + limON_extra$y * interp)
+  }
+  result;
 }
-lim <- limInterp(1);
 
 
 # For midweek approx graphs - e.g., 7/4 to scale up from 4 to 7 days.
@@ -408,7 +434,7 @@ plotON <- function(data, week, interp, filename) {
   }
   plotit(data, week, lim, filename, bShowLabels, theCanadaOutline = canadaOutline);
 }
-plotit <- function(data, week, lim, filename, bShowLabels = FALSE, theCanadaOutline = canadaOutline) {
+plotit <- function(data, week, lim, filename, bShowLabels = FALSE, theCanadaOutline = canadaOutline, crs=3347) {
   baseDate <- as.Date('2019-12-29') + (week-1)*7;
   data <- data %>% select(pop100k, cases=paste0('cases', week), geometry, province, health_region, country);
   data$titleTrim <- substr(data$health_region, 0, 10);
@@ -429,7 +455,7 @@ plotit <- function(data, week, lim, filename, bShowLabels = FALSE, theCanadaOutl
                    format.Date(baseDate, "%b %d"), '-', format.Date(baseDate+6, "%b %d")));
 
     if (!is.null(lim)) {
-      p <- p + coord_sf(xlim=lim$x, ylim=lim$y, expand=FALSE, crs=st_crs(3347));
+      p <- p + coord_sf(xlim=lim$x, ylim=lim$y, expand=FALSE, crs=st_crs(crs), label_graticule = '', label_axes='');
       if (bShowLabels == 'both') {
         p <- p + geom_sf_text(aes(geometry=geometry,
                         label=paste0(health_region, '\n', round(cases/pop100k * scaleFactor, -1))),
@@ -467,11 +493,17 @@ plotON(both, theWeek, 0.3, '2_30_percent.png');
 plotON(both, theWeek, 1.0, '3_ontario.png');
 plotit(both, theWeek, limNA, '4_north_america.png', theCanadaOutline = canadaOutlineSimplified);
 plotit(both, theWeek, limABSKMB_extra, '5_prairies.png', 'canada');
+plotit(both, theWeek, limWindsor, '6_windsor.png', 'both');
+plotit(both11N, theWeek, limBC_11N, '7_bc.png', 'both', crs=26911);
 
 stop();
 
-for (aWeek in 20:maxWeek) {
+for (aWeek in 46:maxWeek) {
+  plotON(both, aWeek, 0, paste0('ggh_usa_', aWeek, '.png'));
+  plotON(both, aWeek, 0.3, paste0('southontario_', aWeek, '.png'));
   plotON(both, aWeek, 1.0, paste0('ontario_', aWeek, '.png'));
   plotit(both, aWeek, limNA, paste0('north_america_', aWeek, '.png'), theCanadaOutline = canadaOutlineSimplified);
-  plotit(both, aWeek, limABSKMB_extra, paste0('prairies_', aWeek, '.png'));
+  plotit(both, aWeek, limABSKMB_extra, paste0('prairies_', aWeek, '.png'), 'canada');
+  plotit(both, aWeek, limWindsor, paste0('windsor_', aWeek, '.png'), 'both');
+  plotit(both11N, aWeek, limBC_11N, paste0('bc_', aWeek, '.png'), 'both', crs=26911);
 }
