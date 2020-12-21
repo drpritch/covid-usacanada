@@ -10,7 +10,7 @@ library('ggpubr');
 theCoords <- 3347; # StatsCan Lambert
 theCoords <- st_crs(theCoords);
 # Week 47: Nov. 15-21
-theWeek <- 50;
+theWeek <- 51;
 maxWeek <- theWeek;
 #provinceFilter <- c('Saskatchewan', 'Manitoba','Ontario','Quebec');
 provinceUnfilter <- c();#'Yukon', 'NWT', 'Nunavut');
@@ -317,6 +317,10 @@ canada11N <- canadaCases %>%
   filter(!province %in% provinceUnfilter) %>%
   left_join(canadaGeo %>% st_transform(26911) %>% st_simplify(dTolerance=500) %>% select(health_region),
             by = 'health_region');
+canada13N <- canadaCases %>%
+  filter(!province %in% provinceUnfilter) %>%
+  left_join(canadaGeo %>% st_transform(26913) %>% st_simplify(dTolerance=500) %>% select(health_region),
+            by = 'health_region');
 #ggplot(canada) +
 #  geom_sf(aes(geometry=geometry, fill=weekly / pop100k), color='#00000010') +
 #  scale_fill_fermenter(palette='GnBu', direction=1,);
@@ -363,7 +367,7 @@ makeUSA <- function(crs=theCoords) {
 }
 usa <- makeUSA();
 usa11N <- makeUSA(26911);
-
+usa13N <- makeUSA(26913);
 
 
 # Unique id
@@ -371,8 +375,11 @@ canada$id <- canada$health_region;
 canada$country <- 'canada';
 canada11N$id <- canada11N$health_region;
 canada11N$country <- 'canada';
+canada13N$id <- canada13N$health_region;
+canada13N$country <- 'canada';
 both <- rbind(as.data.frame(canada), as.data.frame(usa));
 both11N <- rbind(as.data.frame(canada11N), as.data.frame(usa11N));
+both13N <- rbind(as.data.frame(canada13N), as.data.frame(usa13N));
 
 
 canadaOutline <- st_read('../input/gpr_000b11a_e.shp') %>%
@@ -396,6 +403,7 @@ limON <-      list(x = c(5960000, 7584000), y = c( 658000, 2296600));
 limMBONQC <-  list(x = c(5508000, 8487000), y = c( 658000, 3540000));
 limABSKMB <-  list(x = c(4427326, 6371650), y = c(1433502, 2965270));
 limABSKMB_extra <-  list(x = c(4100000, 6380000), y = c(658000, 2970000));
+limABSKMB_extra_13N <-  list(x = c(-700000, 1500000), y = c(5000000, 6800000));
 limON_extra <- list(x = c(5508000, 8000000), y = c( 280000, 2280000));
 limBC <- list(x = c(3700000, 4800000), y = c(1500000, 2300000));
 limBC_11N <- list(x = c(-300000, 1000000), y = c(5000000, 5800000));
@@ -434,17 +442,25 @@ plotON <- function(data, week, interp, filename) {
   }
   plotit(data, week, lim, filename, bShowLabels, theCanadaOutline = canadaOutline);
 }
-plotit <- function(data, week, lim, filename, bShowLabels = FALSE, theCanadaOutline = canadaOutline, crs=3347) {
+plotit <- function(data, week, lim, filename, bShowLabels = FALSE, theCanadaOutline = canadaOutline, week0 = NA, crs=3347) {
   baseDate <- as.Date('2019-12-29') + (week-1)*7;
-  data <- data %>% select(pop100k, cases=paste0('cases', week), geometry, province, health_region, country);
+  if (is.na(week0)) {
+    data <- data %>% select(pop100k, cases=paste0('cases', week), geometry, province, health_region, country);
+    theScaleFill <- scale_fill_fermenter(palette='GnBu', direction=1,
+                                           breaks = c(25,1:4*100, 700, 1000, 1300),
+                                           limits = c(0, 1600));
+  } else {
+    data <- data %>% select(pop100k, cases=paste0('cases', week), cases0 = paste0('cases', week0), geometry, province, health_region, country);
+    data$cases <- data$cases - data$cases0;
+    theScaleFill <- scale_fill_fermenter(palette='RdBu', direction=-1,
+                                         breaks = c(-400, -200, -100, -50, -25, 25, 50, 100, 200, 400));
+  }
   data$titleTrim <- substr(data$health_region, 0, 10);
   data$titleTrim[data$country=='usa'] <- substr(data$titleTrim[data$country=='usa'], 0, 3);
   p <- ggplot(data) +
     geom_sf(aes(geometry=geometry, fill=cases / pop100k * scaleFactor),
             color='#00000010') +
-    scale_fill_fermenter(palette='GnBu', direction=1,
-                         breaks = c(25,1:4*100, 700, 1000, 1300),
-                         limits = c(0, 1600)) +
+    theScaleFill +
     geom_sf(data=theCanadaOutline, aes(geometry=geometry), colour='black', alpha=0.5, fill=NA, size=0.1) +
     geom_sf(data=usaOutline, aes(geometry=geometry), colour='black', alpha=0.5, fill=NA, size=0.1) +
     theme_minimal() +
@@ -480,30 +496,28 @@ plotit <- function(data, week, lim, filename, bShowLabels = FALSE, theCanadaOutl
       }
     }
   if (!is.na(filename)) {
-    ggsave(filename, scale=1.5, width=5, height=4.3, units='in');
+    ggsave(paste0(filename, '_', week, '.png'), scale=1.5, width=5, height=4.3, units='in');
   }
   p
 }
 
 canadaOutlineSimplified <- canadaOutline %>% st_simplify(dTolerance = 0.1);
-
-#plotON(canada, theWeek, 0, '0_ggh.png');
-plotON(both, theWeek, 0, '1_ggh_usa.png');
-plotON(both, theWeek, 0.3, '2_30_percent.png');
-plotON(both, theWeek, 1.0, '3_ontario.png');
-plotit(both, theWeek, limNA, '4_north_america.png', theCanadaOutline = canadaOutlineSimplified);
-plotit(both, theWeek, limABSKMB_extra, '5_prairies.png', 'canada');
-plotit(both, theWeek, limWindsor, '6_windsor.png', 'both');
-plotit(both11N, theWeek, limBC_11N, '7_bc.png', 'both', crs=26911);
+plotON(both, theWeek, 0, 'ggh_usa');
+plotON(both, theWeek, 0.3, 'southontario');
+plotON(both, theWeek, 1.0, 'ontario');
+plotit(both, theWeek, limNA, 'north_america', theCanadaOutline = canadaOutlineSimplified);
+plotit(both13N, theWeek, limABSKMB_extra_13N, 'prairies', 'canada', crs=26913);
+plotit(both, theWeek, limWindsor, 'windsor', 'both');
+plotit(both11N, theWeek, limBC_11N, 'bc', 'both', crs=26911);
 
 stop();
 
 for (aWeek in 46:maxWeek) {
-  plotON(both, aWeek, 0, paste0('ggh_usa_', aWeek, '.png'));
-  plotON(both, aWeek, 0.3, paste0('southontario_', aWeek, '.png'));
-  plotON(both, aWeek, 1.0, paste0('ontario_', aWeek, '.png'));
-  plotit(both, aWeek, limNA, paste0('north_america_', aWeek, '.png'), theCanadaOutline = canadaOutlineSimplified);
-  plotit(both, aWeek, limABSKMB_extra, paste0('prairies_', aWeek, '.png'), 'canada');
-  plotit(both, aWeek, limWindsor, paste0('windsor_', aWeek, '.png'), 'both');
-  plotit(both11N, aWeek, limBC_11N, paste0('bc_', aWeek, '.png'), 'both', crs=26911);
+  plotON(both, aWeek, 0, 'ggh_usa');
+  plotON(both, aWeek, 0.3, 'southontario');
+  plotON(both, aWeek, 1.0, 'ontario');
+  plotit(both, aWeek, limNA, 'north_america', theCanadaOutline = canadaOutlineSimplified);
+  plotit(both13N, aWeek, limABSKMB_extra_13N, 'prairies', 'canada', crs=26913);
+  plotit(both, aWeek, limWindsor, 'windsor', 'both');
+  plotit(both11N, aWeek, limBC_11N, 'bc', 'both', crs=26911);
 }
