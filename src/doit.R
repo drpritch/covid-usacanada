@@ -10,7 +10,7 @@ library('ggpubr');
 theCoords <- 3347; # StatsCan Lambert
 theCoords <- st_crs(theCoords);
 # Week 47: Nov. 15-21
-theWeek <- 51;
+theWeek <- 53;
 maxWeek <- theWeek;
 #provinceFilter <- c('Saskatchewan', 'Manitoba','Ontario','Quebec');
 provinceUnfilter <- c();#'Yukon', 'NWT', 'Nunavut');
@@ -304,9 +304,10 @@ canadaCases <- canadaCases %>%
 # Normally: week 1 = Jan 1...7, week 2 = Jan 8...15
 # By shifting by three: week 1 = Dec 29...Jan 4 (Sun-Sat)
 # and week 47 = Nov. 15-21
-canadaCases <- canadaCases %>% group_by(health_region, province, pop100k, week = lubridate::week(date_report + 3)) %>%
+# That gave: lubridate::week(date_report + 3)
+# Then revised to go beyond 2020.
+canadaCases <- canadaCases %>% group_by(health_region, province, pop100k, week = as.numeric(floor((date_report - as.Date('2019-12-22'))/7))) %>%
   summarise(cases=sum(cases)) %>%
-  filter(week <= maxWeek) %>%
   tidyr::pivot_wider(names_from=week, values_from=cases, names_prefix='cases');
 
 canada <- canadaCases %>%
@@ -340,7 +341,7 @@ usaPop$fips <- usaPop$STATE * 1000 + usaPop$COUNTY
 usaCases <- usaCases %>% left_join(usaPop[,c('fips','POPESTIMATE2019')], by='fips');
 usaCases$pop100k <- usaCases$POPESTIMATE2019/100000;
 
-usaCases <- usaCases %>% group_by(fips, state, county, week = lubridate::week(date + 3)) %>%
+usaCases <- usaCases %>% group_by(fips, state, county, week = as.numeric(floor((date - as.Date('2019-12-22'))/7))) %>%
   summarise(cases=max(cases));
 usaCases <- usaCases %>% group_by(fips) %>%
   mutate(prev.cases=lag(cases, order_by=week)) %>%
@@ -412,6 +413,7 @@ limNA <- list(x = c(3415360, 9015737), y = c(-1398365, 4360410));
 # a southern Ontario view
 limON30 <- list(x = c(6702400, 7804000), y = c(480000, 1340000));
 limWindsor <- list(x = c(6702400, 7304000), y = c(440000, 980000));
+limWindsor <- list(x = c(6852400, 7154000), y = c(585000, 845000));
 limInterp <- function(interp) {
   if (interp < 0.3) {
     interp <- interp / 0.3;
@@ -429,7 +431,7 @@ limInterp <- function(interp) {
 # For midweek approx graphs - e.g., 7/4 to scale up from 4 to 7 days.
 scaleFactor <- 1;
 
-plotON <- function(data, week, interp, filename) {
+plotON <- function(data, week, interp, filename, week0 = NA) {
   lim <- NULL;
   bShowLabels <- FALSE;
   if (!is.na(interp)) {
@@ -440,58 +442,68 @@ plotON <- function(data, week, interp, filename) {
       bShowLabels <- 'trim';
     }
   }
-  plotit(data, week, lim, filename, bShowLabels, theCanadaOutline = canadaOutline);
+  plotit(data, week, lim, filename, bShowLabels, theCanadaOutline = canadaOutline, week0 = week0);
 }
 plotit <- function(data, week, lim, filename, bShowLabels = FALSE, theCanadaOutline = canadaOutline, week0 = NA, crs=3347) {
   baseDate <- as.Date('2019-12-29') + (week-1)*7;
+  breaks <- c(25,1:4*100, 700, 1000, 1300);
   if (is.na(week0)) {
     data <- data %>% select(pop100k, cases=paste0('cases', week), geometry, province, health_region, country);
     theScaleFill <- scale_fill_fermenter(palette='GnBu', direction=1,
-                                           breaks = c(25,1:4*100, 700, 1000, 1300),
+                                           breaks = breaks,
                                            limits = c(0, 1600));
+    data$value <- data$cases / data$pop100k * scaleFactor;
+    data$numValue <- data$value;
+    legendPosition <- 'bottom';
+    legendTitle <- 'Weekly cases/100,000';
+    title <- paste0('COVID 19 Cases per 100,000 for ',
+                    format.Date(baseDate, "%b %d"), '-', format.Date(baseDate+6, "%b %d"));
   } else {
     data <- data %>% select(pop100k, cases=paste0('cases', week), cases0 = paste0('cases', week0), geometry, province, health_region, country);
-    data$cases <- data$cases - data$cases0;
-    theScaleFill <- scale_fill_fermenter(palette='RdBu', direction=-1,
-                                         breaks = c(-400, -200, -100, -50, -25, 25, 50, 100, 200, 400));
+    data$bin <- cut(data$cases/data$pop100k * scaleFactor, breaks=c(-10, breaks, 100000));
+    data$bin0 <- cut(data$cases0/data$pop100k * scaleFactor, breaks=c(-10, breaks, 100000));
+    data$numValue <- (data$cases - data$cases0)/data$pop100k * scaleFactor;
+    data$value <- factor(pmax(pmin(as.numeric(data$bin) - as.numeric(data$bin0), 4), -4), levels=-4:4);
+    theScaleFill <- scale_fill_brewer(palette='RdBu', type='seq', direction=-1);
+    legendPosition = 'right';
+    legendTitle <- 'Category growth';
+    title <- paste0('COVID-19 Case growth over ', week-week0, ' weeks prior');
   }
   data$titleTrim <- substr(data$health_region, 0, 10);
   data$titleTrim[data$country=='usa'] <- substr(data$titleTrim[data$country=='usa'], 0, 3);
   p <- ggplot(data) +
-    geom_sf(aes(geometry=geometry, fill=cases / pop100k * scaleFactor),
-            color='#00000010') +
+    geom_sf(aes(geometry=geometry, fill=value), color='#00000010') +
     theScaleFill +
     geom_sf(data=theCanadaOutline, aes(geometry=geometry), colour='black', alpha=0.5, fill=NA, size=0.1) +
     geom_sf(data=usaOutline, aes(geometry=geometry), colour='black', alpha=0.5, fill=NA, size=0.1) +
     theme_minimal() +
-    labs(fill='Weekly cases/100,000',x=NULL,y=NULL,
+    labs(fill=legendTitle,x=NULL,y=NULL,
          caption='Data: COVID-19 Canada Open Data Working Group, covid-data@nytimes.com. Graphics: @drpritch2') +
-    theme(legend.position="bottom", legend.key.width=unit(3, 'line')) +
-    ggtitle(paste0('COVID 19 Cases per 100,000 for ',
-                   format.Date(baseDate, "%b %d"), '-', format.Date(baseDate+6, "%b %d")));
+    theme(legend.position=legendPosition, legend.key.width=unit(3, 'line')) +
+    ggtitle(title);
 
     if (!is.null(lim)) {
       p <- p + coord_sf(xlim=lim$x, ylim=lim$y, expand=FALSE, crs=st_crs(crs), label_graticule = '', label_axes='');
       if (bShowLabels == 'both') {
         p <- p + geom_sf_text(aes(geometry=geometry,
-                        label=paste0(health_region, '\n', round(cases/pop100k * scaleFactor, -1))),
+                        label=paste0(health_region, '\n', round(numValue, -1))),
                      size=2, alpha=0.5);
       }
       else if (bShowLabels == 'canada') {
         p <- p + geom_sf_text(data = data %>% filter(country=='canada'),
                               aes(geometry=geometry,
-                                  label=paste0(health_region, '\n', round(cases/pop100k * scaleFactor, -1))),
+                                  label=paste0(health_region, '\n', round(numValue, -1))),
                               size=2, alpha=0.5);
       }
       else if (bShowLabels == 'trim') {
         p <- p + geom_sf_text(aes(geometry=geometry,
-                                  label=paste0(titleTrim, '\n', round(cases/pop100k * scaleFactor, -1))),
+                                  label=paste0(titleTrim, '\n', round(numValue, -1))),
                               size=1.5, alpha=0.5);
       }
       else if (bShowLabels == 'trimCanada') {
         p <- p + geom_sf_text(data = data %>% filter(country=='canada'),
                               aes(geometry=geometry,
-                                  label=paste0(titleTrim, '\n', round(cases/pop100k * scaleFactor, -1))),
+                                  label=paste0(titleTrim, '\n', round(numValue, -1))),
                               size=1.5, alpha=0.5);
       }
     }
@@ -512,7 +524,7 @@ plotit(both11N, theWeek, limBC_11N, 'bc', 'both', crs=26911);
 
 stop();
 
-for (aWeek in 46:maxWeek) {
+for (aWeek in 40:maxWeek) {
   plotON(both, aWeek, 0, 'ggh_usa');
   plotON(both, aWeek, 0.3, 'southontario');
   plotON(both, aWeek, 1.0, 'ontario');
