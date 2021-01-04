@@ -28,10 +28,10 @@
 #----------------------------------------------------------------
 # SETTINGS
 input_dir="."  # Replace this by a path to your folder /path/to/your/folder
-n_files=29
+n_files=12
 files=`ls -1 ${input_dir}/$1_*.png | head -${n_files}`  # Change the file type to the correct type of your images
 output_file="$1.mp4"           # Name of output video
-crossfade=0.2                     # Crossfade duration between two images
+crossfade=0.3                     # Crossfade duration between two images
 #----------------------------------------------------------------
 
 # Making an ffmpeg script...
@@ -42,11 +42,13 @@ output="[0:v]"
 i=0
 
 for f in ${files}; do
-  input+=" -loop 1 -t 0.3 -i $f"
 
   next=$((i+1))
   if [ "${i}" -ne "$((n_files-1))" ]; then
+    input+=" -loop 1 -t 0.3 -i $f"
     filters+=" [${next}:v][${i}:v]blend=all_expr='A*(if(gte(T,${crossfade}),1,T/${crossfade}))+B*(1-(if(gte(T,${crossfade}),1,T/${crossfade})))'[b${next}v];"
+  else
+    input+=" -loop 1 -t 1.5 -i $f"
   fi
 
   if [ "${i}" -gt "0" ]; then
@@ -57,6 +59,7 @@ for f in ${files}; do
 done
 
 output+="concat=n=$((i * 2 - 1)):v=1:a=0,format=yuv420p[v]\" -map \"[v]\" ${output_file}"
+#output+="concat=n=$((i * 2 - 1)):v=1:a=0,format=rgba[v]\" -map \"[v]\" ${output_file}"
 
 script="ffmpeg ${input} -filter_complex \"${filters} ${output}"
 
