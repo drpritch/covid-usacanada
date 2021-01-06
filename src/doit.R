@@ -12,9 +12,6 @@ theCoords <- st_crs(theCoords);
 # Week 47: Nov. 15-21
 theWeek <- 53;
 maxWeek <- theWeek;
-#provinceFilter <- c('Saskatchewan', 'Manitoba','Ontario','Quebec');
-provinceUnfilter <- c();#'Yukon', 'NWT', 'Nunavut');
-#stateFilter <- c('Minnesota','Wiscosin','Michigan','Ohio','Pennsylvania','New York','Vermont','Massachusetts','Connecticut','Rhode Island','New Hampshire','Maine');
 stateUnfilter <- c('Hawaii','Alaska','Puerto Rico','Virgin Islands','Northern Mariana Islands');
 
 canadaFiles <- c(
@@ -310,18 +307,11 @@ canadaCases <- canadaCases %>% group_by(health_region, province, pop100k, week =
   summarise(cases=sum(cases)) %>%
   tidyr::pivot_wider(names_from=week, values_from=cases, names_prefix='cases');
 
-canada <- canadaCases %>%
-  filter(!province %in% provinceUnfilter) %>%
-  left_join(canadaGeo %>% st_transform(theCoords) %>% st_simplify(dTolerance=500) %>% select(health_region),
-            by = 'health_region');
-canada11N <- canadaCases %>%
-  filter(!province %in% provinceUnfilter) %>%
-  left_join(canadaGeo %>% st_transform(26911) %>% st_simplify(dTolerance=500) %>% select(health_region),
-            by = 'health_region');
-canada13N <- canadaCases %>%
-  filter(!province %in% provinceUnfilter) %>%
-  left_join(canadaGeo %>% st_transform(26913) %>% st_simplify(dTolerance=500) %>% select(health_region),
-            by = 'health_region');
+canada <- left_join(canadaGeo %>% select(health_region),
+                    canadaCases, by = 'health_region') %>%
+  st_transform(theCoords) %>% st_simplify(dTolerance=500);
+canada$id <- canada$health_region;
+canada$country <- 'canada';
 #ggplot(canada) +
 #  geom_sf(aes(geometry=geometry, fill=weekly / pop100k), color='#00000010') +
 #  scale_fill_fermenter(palette='GnBu', direction=1,);
@@ -355,32 +345,18 @@ usaCases <- usaCases %>%
   select(fips, health_region = county, state, pop100k, week, cases) %>%
   tidyr::pivot_wider(names_from=week, values_from=cases, names_prefix='cases', values_fill=0);
 
-makeUSA <- function(crs=theCoords) {
-  usa <- usaCases %>%
-    filter(!state %in% stateUnfilter) %>%
-    left_join(usaGeo %>% st_transform(st_crs(crs)) %>% select('fips'), by='fips');
-  usa$province <- usa$state;
-  usa$state <- NULL;
-  usa$id <- as.character(usa$fips);
-  usa$fips <- NULL;
-  usa$country <- 'usa';
-  usa;
-}
-usa <- makeUSA();
-usa11N <- makeUSA(26911);
-usa13N <- makeUSA(26913);
+usa <- left_join(usaGeo %>% select('fips'),
+                 usaCases %>% filter(!state %in% stateUnfilter),
+                 by='fips') %>%
+  rename(province = state, id = fips) %>%
+  st_transform(st_crs(theCoords));
+usa$id <- as.character(usa$id);
+usa$country <- 'usa';
 
 
-# Unique id
-canada$id <- canada$health_region;
-canada$country <- 'canada';
-canada11N$id <- canada11N$health_region;
-canada11N$country <- 'canada';
-canada13N$id <- canada13N$health_region;
-canada13N$country <- 'canada';
-both <- rbind(as.data.frame(canada), as.data.frame(usa));
-both11N <- rbind(as.data.frame(canada11N), as.data.frame(usa11N));
-both13N <- rbind(as.data.frame(canada13N), as.data.frame(usa13N));
+both <- bind_rows(canada, usa);
+both11N <- both %>% st_transform(26911);
+both13N <- both %>% st_transform(26913);
 
 
 canadaOutline <- st_read('../input/gpr_000b11a_e.shp') %>%
@@ -391,7 +367,6 @@ canadaOutline$PRENAME <- forcats::fct_recode(canadaOutline$PRENAME,
     NL='Newfoundland and Labrador',
     PEI='Prince Edward Island',
     NWT='Northwest Territories');
-canadaOutline <- canadaOutline %>% filter(!PRENAME %in% provinceUnfilter);
 
 usaOutline <- st_read('../input/cb_2018_us_state_20m.shp') %>%
   st_simplify(dTolerance=0.01) %>% # degrees
