@@ -1,0 +1,40 @@
+{
+  "name": "covidUsaCanada",
+  "version": "1.0.0",
+  "description": "COVID USA-Canada map",
+  "main": "src/index.jsx",
+  "scripts": {
+    "start": "http-server ./dist -c 1 -g",
+    "webpack": "webpack",
+    "webpack-dev": "webpack --mode development --watch"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/drpritch/covid-usacanada.git"
+  },
+  "author": "David Pritchard",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/drpritch/covid-usacanada/issues"
+  },
+  "homepage": "https://github.com/drpritch/covid-usacanada#readme",
+  "devDependencies": {
+    "@babel/core": "^7.12.10",
+    "@babel/plugin-transform-runtime": "^7.12.10",
+    "@babel/preset-env": "^7.12.11",
+    "@babel/preset-react": "^7.12.10",
+    "@babel/preset-typescript": "^7.12.7",
+    "@types/react": "^17.0.0",
+    "@types/react-dom": "^17.0.0",
+    "babel-loader": "^8.2.2",
+    "core-js": "^3.8.2",
+    "deck.gl": "^8.3.13",
+    "http-server": "^0.12.3",
+    "react": "^16.14.0",
+    "react-dom": "^16.14.0",
+    "react-map-gl": "^6.0.3",
+    "webpack": "^4.44.2",
+    "webpack-cli": "^4.3.1"
+  },
+  "dependencies": {}
+}

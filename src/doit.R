@@ -12,7 +12,7 @@ theCoords <- st_crs(theCoords);
 # Week 47: Nov. 15-21
 theWeek <- 53;
 maxWeek <- theWeek;
-stateUnfilter <- c('Hawaii','Alaska','Puerto Rico','Virgin Islands','Northern Mariana Islands');
+stateUnfilter <- c('Hawaii','Puerto Rico','Virgin Islands','Northern Mariana Islands');
 
 canadaFiles <- c(
   #Canada = 'HR_000a18a_e',
@@ -307,8 +307,8 @@ canadaCases <- canadaCases %>% group_by(health_region, province, pop100k, week =
   summarise(cases=sum(cases)) %>%
   tidyr::pivot_wider(names_from=week, values_from=cases, names_prefix='cases');
 
-canada <- left_join(canadaGeo %>% select(health_region),
-                    canadaCases, by = 'health_region') %>%
+canada <- inner_join(canadaGeo %>% select(health_region),
+                     canadaCases, by = 'health_region') %>%
   st_transform(theCoords) %>% st_simplify(dTolerance=500);
 canada$id <- canada$health_region;
 canada$country <- 'canada';
@@ -345,7 +345,7 @@ usaCases <- usaCases %>%
   select(fips, health_region = county, state, pop100k, week, cases) %>%
   tidyr::pivot_wider(names_from=week, values_from=cases, names_prefix='cases', values_fill=0);
 
-usa <- left_join(usaGeo %>% select('fips'),
+usa <- inner_join(usaGeo %>% select('fips'),
                  usaCases %>% filter(!state %in% stateUnfilter),
                  by='fips') %>%
   rename(province = state, id = fips) %>%
@@ -508,3 +508,17 @@ for (aWeek in 40:maxWeek) {
   plotit(both, aWeek, limWindsor, 'windsor', 'both');
   plotit(both11N, aWeek, limBC_11N, 'bc', 'both', crs=26911);
 }
+
+write(geojsonsf::sf_geojson(both %>% st_transform(4326)), '../dist/covidUsaCanada.json');
+
+#both$north <- st_coordinates(st_centroid(both)$geometry)[,2] > 475000;
+#st_write(both %>% filter(north==T) %>% select('geometry', 'rate53', 'bin53', 'description' = 'id') %>% st_transform(4326),'foo.kml', driver='kml', append=F)
+# Notes on KML output & My Maps:
+# - 2000 feature limit - hence north filter
+# - can use alpha to get so-so simulation of right colours
+# - name is good, need US names wired up
+# - may want to separate out US & Canada to sep layers
+# - ultrapainful to set up styles like this. libkml too hard to install.
+# - one KML per bin, add style info, then cat em together might work
+
+# cat foo.kml | sed 's/\([0-9]\.[0-9][0-9][0-9]\)[0-9]*\([ ,]\)/\1\2/g' > bar.kml
