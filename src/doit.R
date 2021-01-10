@@ -10,7 +10,7 @@ library('ggpubr');
 theCoords <- 3347; # StatsCan Lambert
 theCoords <- st_crs(theCoords);
 # Week 47: Nov. 15-21
-theWeek <- 53;
+theWeek <- 54;
 maxWeek <- theWeek;
 stateUnfilter <- c('Hawaii','Puerto Rico','Virgin Islands','Northern Mariana Islands');
 
@@ -310,6 +310,12 @@ canadaCases <- canadaCases %>% group_by(health_region, province, pop100k, week =
 canada <- inner_join(canadaGeo %>% select(health_region),
                      canadaCases, by = 'health_region') %>%
   st_transform(theCoords) %>% st_simplify(dTolerance=500);
+# Trim north, with crazy coastline+islands that increases filesize and extent
+# Reduces json filesize about 700kB (10%)
+canada <- canada %>% st_transform(4326) %>%
+  st_crop(xmin=-180, ymin=0, xmax=180, ymax=67) %>%
+  st_transform(theCoords);
+
 canada$id <- canada$health_region;
 canada$country <- 'canada';
 #ggplot(canada) +
@@ -419,11 +425,11 @@ plotON <- function(data, week, interp, filename, week0 = NA) {
   }
   plotit(data, week, lim, filename, bShowLabels, theCanadaOutline = canadaOutline, week0 = week0);
 }
-plotit <- function(data, week, lim, filename, bShowLabels = FALSE, theCanadaOutline = canadaOutline, week0 = NA, crs=3347) {
+plotit <- function(theData, week, lim, filename, bShowLabels = FALSE, theCanadaOutline = canadaOutline, week0 = NA, crs=3347) {
   baseDate <- as.Date('2019-12-29') + (week-1)*7;
   breaks <- c(25,1:4*100, 700, 1000, 1300);
   if (is.na(week0)) {
-    data <- data %>% select(pop100k, cases=paste0('cases', week), geometry, province, health_region, country);
+    data <- theData %>% select(pop100k, cases=paste0('cases', week), geometry, province, health_region, country);
     theScaleFill <- scale_fill_fermenter(palette='GnBu', direction=1,
                                            breaks = breaks,
                                            limits = c(0, 1600));
@@ -434,7 +440,7 @@ plotit <- function(data, week, lim, filename, bShowLabels = FALSE, theCanadaOutl
     title <- paste0('COVID 19 Cases per 100,000 for ',
                     format.Date(baseDate, "%b %d"), '-', format.Date(baseDate+6, "%b %d"));
   } else {
-    data <- data %>% select(pop100k, cases=paste0('cases', week), cases0 = paste0('cases', week0), geometry, province, health_region, country);
+    data <- theData %>% select(pop100k, cases=paste0('cases', week), cases0 = paste0('cases', week0), geometry, province, health_region, country);
     data$bin <- cut(data$cases/data$pop100k * scaleFactor, breaks=c(-10, breaks, 100000));
     data$bin0 <- cut(data$cases0/data$pop100k * scaleFactor, breaks=c(-10, breaks, 100000));
     data$numValue <- (data$cases - data$cases0)/data$pop100k * scaleFactor;
@@ -483,19 +489,29 @@ plotit <- function(data, week, lim, filename, bShowLabels = FALSE, theCanadaOutl
       }
     }
   if (!is.na(filename)) {
-    ggsave(paste0(filename, '_', week, '.png'), scale=1.5, width=5, height=4.3, units='in');
+    if (is.na(week0)) {
+      ggsave(paste0(filename, '_', week, '.png'), scale=1.5, width=5, height=4.3, units='in');
+    } else {
+      ggsave(paste0(filename, '_delta_', week, '.png'), scale=1.5, width=5, height=4.3, units='in');
+      plotit(theData, week, lim, filename, bShowLabels, theCanadaOutline, NA, crs);
+    }
   }
   p
 }
 
-canadaOutlineSimplified <- canadaOutline %>% st_simplify(dTolerance = 0.1);
-plotON(both, theWeek, 0, 'ggh_usa');
-plotON(both, theWeek, 0.3, 'southontario');
-plotON(both, theWeek, 1.0, 'ontario');
-plotit(both, theWeek, limNA, 'north_america', theCanadaOutline = canadaOutlineSimplified);
-plotit(both13N, theWeek, limABSKMB_extra_13N, 'prairies', 'canada', crs=26913);
-plotit(both, theWeek, limWindsor, 'windsor', 'both');
-plotit(both11N, theWeek, limBC_11N, 'bc', 'both', crs=26911);
+canadaOutlineSimplified <- canadaOutline %>% st_simplify(dTolerance = 0.1) %>%
+  st_transform(4326) %>% st_crop(xmin=-180, ymin=0, xmax=180, ymax=67) %>%
+  st_transform(theCoords);
+theWeek0 <- 51;
+plotON(both, theWeek, 0, 'ggh_usa', week0 = theWeek0);
+plotON(both, theWeek, 0.3, 'southontario', week0 = theWeek0);
+plotON(both, theWeek, 1.0, 'ontario', week0 = theWeek0);
+plotit(both, theWeek, limNA, 'north_america', theCanadaOutline = canadaOutlineSimplified, week0 = theWeek0);
+plotit(both13N, theWeek, limABSKMB_extra_13N, 'prairies', 'canada', crs=26913, week0 = theWeek0);
+plotit(both, theWeek, limWindsor, 'windsor', 'both', week0 = theWeek0);
+plotit(both11N, theWeek, limBC_11N, 'bc', 'both', crs=26911, week0 = theWeek0);
+
+write(geojsonsf::sf_geojson(both %>% st_transform(4326), digits=3), '../dist/covidUsaCanada.json');
 
 stop();
 
@@ -508,17 +524,3 @@ for (aWeek in 40:maxWeek) {
   plotit(both, aWeek, limWindsor, 'windsor', 'both');
   plotit(both11N, aWeek, limBC_11N, 'bc', 'both', crs=26911);
 }
-
-write(geojsonsf::sf_geojson(both %>% st_transform(4326)), '../dist/covidUsaCanada.json');
-
-#both$north <- st_coordinates(st_centroid(both)$geometry)[,2] > 475000;
-#st_write(both %>% filter(north==T) %>% select('geometry', 'rate53', 'bin53', 'description' = 'id') %>% st_transform(4326),'foo.kml', driver='kml', append=F)
-# Notes on KML output & My Maps:
-# - 2000 feature limit - hence north filter
-# - can use alpha to get so-so simulation of right colours
-# - name is good, need US names wired up
-# - may want to separate out US & Canada to sep layers
-# - ultrapainful to set up styles like this. libkml too hard to install.
-# - one KML per bin, add style info, then cat em together might work
-
-# cat foo.kml | sed 's/\([0-9]\.[0-9][0-9][0-9]\)[0-9]*\([ ,]\)/\1\2/g' > bar.kml
