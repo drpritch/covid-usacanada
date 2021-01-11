@@ -2,6 +2,7 @@ import React from 'react';
 import DeckGL from '@deck.gl/react';
 import {GeoJsonLayer} from '@deck.gl/layers';
 import {StaticMap} from 'react-map-gl';
+import Box from '@material-ui/core/box';
 import FormControlLabel from '@material-ui/core/formcontrollabel';
 import Slider from '@material-ui/core/slider';
 import Switch from '@material-ui/core/switch';
@@ -61,7 +62,7 @@ export class CovidUsaCanada extends React.Component<{}, CUCState> {
         
         const layer = new GeoJsonLayer({
                 id: 'geojson-layer',
-                data: 'covidUsaCanada.json',
+                data: /*https://storage.googleapis.com/davidpritchard-website/*/'covidUsaCanada.json',
                 pickable: true,
                 stroked: true,
                 filled: true,
@@ -114,8 +115,10 @@ export class CovidUsaCanada extends React.Component<{}, CUCState> {
                     {/*<StaticMap mapStyle='mapbox://styles/mapbox/light-v10'/>*/}
                 </DeckGL>
 
-                <div style={{float: 'right', width: '300px'}}>
-                        <Typography>{weekToDateStr(this.state.week) + '-' + weekToDateStr(this.state.week, 6) +
+                <div style={{position: 'absolute', width: '300px', zIndex: 1, right: 0, top: 0}}>
+                        <Box m={4}>
+                        <Typography variant='h2'>COVID-19 Cases</Typography>
+                        <Typography>per 100,000 for the week of {weekToDateStr(this.state.week) + '-' + weekToDateStr(this.state.week, 6) +
                                 (this.state.numWeeks > 0 ? (' vs ' + this.state.numWeeks + ' weeks earlier') : '')}</Typography>
                         {this.state.numWeeks > 0 ?
                                 <Slider value={[this.state.week - this.state.numWeeks, this.state.week]} min={12} max={54}
@@ -129,10 +132,13 @@ export class CovidUsaCanada extends React.Component<{}, CUCState> {
                                         onChange={() => this.setState({numWeeks: this.state.numWeeks > 0 ? 0 : 2})}
                                         color='primary'/>}
                                 label='Compare'/>
-                        <Typography>Data by <a href="https://opencovid.ca">COVID-19 Canada Open DataWorking Group</a>,
-                        <a href="https://www.nytimes.com/interactive/2020/us/coronavirus-us-cases.html">The New York Times</a></Typography>
-                        <Typography>Graphics by <a href="https://davidpritchard.org">David Pritchard</a> (<a href="https://twitter.com/drpritch2">@drpritch2</a>)</Typography>
-                        <Typography>Sourcecode available <a href="https://github.com/drpritch2/covid-usa-canada">here</a></Typography>
+                        <p>
+                        <Typography variant='caption'>Data by <a href="https://opencovid.ca">COVID-19 Canada Open Data Working Group</a>,
+                        <a href="https://www.nytimes.com/interactive/2020/us/coronavirus-us-cases.html">The New York Times</a>.
+                        Graphics by <a href="https://davidpritchard.org">David Pritchard</a> / <a href="https://twitter.com/drpritch2">@drpritch2</a>.
+                        Sourcecode available from <a href="https://github.com/drpritch/covid-usacanada">github</a>.</Typography>
+                        </p>
+                        </Box>
                 </div>
         </div>;
     }
