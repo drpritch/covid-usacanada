@@ -511,7 +511,12 @@ plotit(both13N, theWeek, limABSKMB_extra_13N, 'prairies', 'canada', crs=26913, w
 plotit(both, theWeek, limWindsor, 'windsor', 'both', week0 = theWeek0);
 plotit(both11N, theWeek, limBC_11N, 'bc', 'both', crs=26911, week0 = theWeek0);
 
-write(geojsonsf::sf_geojson(both %>% st_transform(4326), digits=3), '../dist/covidUsaCanada.json');
+write(geojsonsf::sf_geojson(
+  both %>% st_transform(4326), digits=3), '../dist/covidUsaCanada.json');
+write(geojsonsf::sf_geojson(
+  canadaOutlineSimplified %>% st_transform(4326), digits=3), '../dist/provinceOutline.json');
+write(geojsonsf::sf_geojson(
+  usaOutline %>% st_transform(4326), digits=3), '../dist/stateeOutline.json');
 
 stop();
 

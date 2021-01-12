@@ -41,6 +41,7 @@ export class CovidUsaCanada extends React.Component<{}, CUCState> {
         };
     }
     render() {
+        const bGrowth = this.state.numWeeks > 0;
         const getFillColor = (feature, week: number, numWeeks: number) => {
                 const bin = BREAKS.findIndex(x => x > feature.properties['cases' + week] / feature.properties.pop100k);
                 let hex: string;
@@ -80,9 +81,37 @@ export class CovidUsaCanada extends React.Component<{}, CUCState> {
                 getElevation: 0
         });
 
+        const provinceLayer = new GeoJsonLayer({
+                id: 'geojson-province-layer',
+                data: /*https://storage.googleapis.com/davidpritchard-website/*/'provinceOutline.json',
+                pickable: false,
+                stroked: true,
+                filled: false,
+                extruded: false,
+                lineWidthScale: 20,
+                lineWidthMinPixels: 1,
+                getLineColor: [0,0,0,70],
+                Radius: 100,
+                getLineWidth: 10,
+                getElevation: 0
+        });
+        const stateLayer = new GeoJsonLayer({
+                id: 'geojson-state-layer',
+                data: /*https://storage.googleapis.com/davidpritchard-website/*/'stateOutline.json',
+                pickable: false,
+                stroked: true,
+                filled: false,
+                extruded: false,
+                lineWidthScale: 20,
+                lineWidthMinPixels: 1,
+                getLineColor: [0,0,0,70],
+                Radius: 100,
+                getLineWidth: 10,
+                getElevation: 0
+        });
         return <div>
                 <DeckGL
-                        layers={[layer]}
+                        layers={[layer, stateLayer, provinceLayer]}
                         mapStyle="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json"
                         initialViewState={{
                                 longitude: -79.350,
@@ -96,9 +125,9 @@ export class CovidUsaCanada extends React.Component<{}, CUCState> {
                         getTooltip={({object}) => {
                                 if (!object) return null;
                                 const p = object.properties;
-                                let result = p.health_region + '\n';
+                                let result = p.health_region + ", " + p.province + '\n';
                                 const rate1 = Math.round(p['cases' + this.state.week] / p.pop100k);
-                                if (this.state.numWeeks == 0) {
+                                if (!bGrowth) {
                                         result += rate1 + ' weekly cases/100k\n';
                                         result += Math.round(p.pop100k * 100000) + ' people';
                                 } else {
@@ -115,29 +144,32 @@ export class CovidUsaCanada extends React.Component<{}, CUCState> {
                     {/*<StaticMap mapStyle='mapbox://styles/mapbox/light-v10'/>*/}
                 </DeckGL>
 
-                <div style={{position: 'absolute', width: '300px', zIndex: 1, right: 0, top: 0}}>
+                <div style={{position: 'absolute', width: '300px', zIndex: 1, left: 0, top: 0}}>
                         <Box m={4}>
-                        <Typography variant='h2'>COVID-19 Cases</Typography>
-                        <Typography>per 100,000 for the week of {weekToDateStr(this.state.week) + '-' + weekToDateStr(this.state.week, 6) +
-                                (this.state.numWeeks > 0 ? (' vs ' + this.state.numWeeks + ' weeks earlier') : '')}</Typography>
-                        {this.state.numWeeks > 0 ?
+                        <Typography variant='h5'>Covid Canada+USA</Typography>
+                        <Typography>{bGrowth ? 'Case Growth' : 'Cases/100,000'} for week of <br/>
+                                {weekToDateStr(this.state.week) + '-' + weekToDateStr(this.state.week, 6) +
+                                (bGrowth ? (' vs ' + this.state.numWeeks + ' weeks earlier') : '')}</Typography>
+                        {bGrowth ?
                                 <Slider value={[this.state.week - this.state.numWeeks, this.state.week]} min={12} max={54}
-                                        onChange={(event: ReactChangeEvent<{}>, newValue: number[]) =>
+                                        onChange={(event: React.ChangeEvent<{}>, newValue: number|number[]) =>
                                                 this.setState({week: newValue[1], numWeeks: newValue[1]-newValue[0]})}></Slider>
                         : <Slider value={this.state.week} min={12} max={54}
-                                onChange={(event: ReactChangeEvent<{}>, newValue: number) => this.setState({week: newValue})}></Slider>
+                                onChange={(event: React.ChangeEvent<{}>, newValue: number|number[]) => this.setState({week: newValue as number})}></Slider>
     }
                         <FormControlLabel control={
-                                <Switch checked={this.state.numWeeks>0}
-                                        onChange={() => this.setState({numWeeks: this.state.numWeeks > 0 ? 0 : 2})}
+                                <Switch checked={bGrowth}
+                                        onChange={() => this.setState({numWeeks: bGrowth ? 0 : 2})}
                                         color='primary'/>}
                                 label='Compare'/>
-                        <p>
+                        </Box>
+                </div>
+                <div style={{position: 'absolute', width: '100vw', zIndex: 1, left: 0, bottom: 0}}>
+                        <Box m={2}>
                         <Typography variant='caption'>Data by <a href="https://opencovid.ca">COVID-19 Canada Open Data Working Group</a>,
                         <a href="https://www.nytimes.com/interactive/2020/us/coronavirus-us-cases.html">The New York Times</a>.
                         Graphics by <a href="https://davidpritchard.org">David Pritchard</a> / <a href="https://twitter.com/drpritch2">@drpritch2</a>.
                         Sourcecode available from <a href="https://github.com/drpritch/covid-usacanada">github</a>.</Typography>
-                        </p>
                         </Box>
                 </div>
         </div>;
