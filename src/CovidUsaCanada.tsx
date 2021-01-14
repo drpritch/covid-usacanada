@@ -4,9 +4,13 @@ import {GeoJsonLayer} from '@deck.gl/layers';
 import {StaticMap} from 'react-map-gl';
 import Box from '@material-ui/core/box';
 import FormControlLabel from '@material-ui/core/formcontrollabel';
+import IconButton from '@material-ui/core/iconbutton';
 import Slider from '@material-ui/core/slider';
 import Switch from '@material-ui/core/switch';
 import Typography from '@material-ui/core/typography';
+
+import PauseIcon from '@material-ui/icons/Pause';
+import PlayArrowIcon from '@material-ui/icons/PlayArrow';
 
 const COLOR_SCALE = [
     // from R: scales::brewer_pal(palette='GnBu')(9)
@@ -24,6 +28,7 @@ const BREAKS = [ 25, 100, 200, 300, 400, 700, 1000, 1300 ];
 type CUCState = {
     week: number;
     numWeeks: number;
+    playbackTimer: number;
 }
 
 const weekToDateStr = (week: number, dayofweek: number = 0): string => {
@@ -37,11 +42,21 @@ export class CovidUsaCanada extends React.Component<{}, CUCState> {
         super(props);
         this.state = {
             week: 54,
-            numWeeks: 0
+            numWeeks: 0,
+            playbackTimer: null
         };
+    }
+    timerCallback() {
+        if(this.state.week==54) {
+                window.clearInterval(this.state.playbackTimer);
+                this.setState({playbackTimer: null});
+        }
+        else
+                this.setState({week: this.state.week+1});
     }
     render() {
         const bGrowth = this.state.numWeeks > 0;
+        const bPlaying = this.state.playbackTimer != null;
         const getFillColor = (feature, week: number, numWeeks: number) => {
                 const BREAKSextra = [ ...BREAKS, 100000 ];
                 const bin = BREAKSextra.findIndex(x => x > feature.properties['cases' + week] / feature.properties.pop100k);
@@ -163,6 +178,22 @@ export class CovidUsaCanada extends React.Component<{}, CUCState> {
                                         onChange={() => this.setState({numWeeks: bGrowth ? 0 : 2})}
                                         color='primary'/>}
                                 label='Compare'/>
+                        {bPlaying ? <IconButton style={{backgroundColor: 'rgb(25,118,210)'}} onClick={() => {
+                                window.clearInterval(this.state.playbackTimer);
+                                this.setState({playbackTimer: null});
+                        }}>
+                                <PauseIcon/>
+                        </IconButton>
+                        : <IconButton style={{backgroundColor: 'rgb(25,118,210)'}} onClick={() => {
+                                let handle = window.setInterval(() => this.timerCallback(), 500);
+                                if (this.state.week==54)
+                                        this.setState({ playbackTimer: handle, numWeeks: 0, week: 12});
+                                else
+                                        this.setState({ playbackTimer: handle, numWeeks: 0});
+                                
+                        }}>
+                                <PlayArrowIcon/>
+                        </IconButton>}
                         </Box>
                 </div>
                 <div style={{position: 'absolute', width: '100vw', zIndex: 1, left: 0, bottom: 0}}>
