@@ -19,7 +19,7 @@ const COLOR_SCALE_COMPARE = [
     "#F7F7F7", "#D1E5F0", "#92C5DE", "#4393C3",
     "#2166AC"
 ];
-const BREAKS = [ 25, 100, 200, 300, 400, 700, 1000, 1300, 100000 ];
+const BREAKS = [ 25, 100, 200, 300, 400, 700, 1000, 1300 ];
 
 type CUCState = {
     week: number;
@@ -43,12 +43,13 @@ export class CovidUsaCanada extends React.Component<{}, CUCState> {
     render() {
         const bGrowth = this.state.numWeeks > 0;
         const getFillColor = (feature, week: number, numWeeks: number) => {
-                const bin = BREAKS.findIndex(x => x > feature.properties['cases' + week] / feature.properties.pop100k);
+                const BREAKSextra = [ ...BREAKS, 100000 ];
+                const bin = BREAKSextra.findIndex(x => x > feature.properties['cases' + week] / feature.properties.pop100k);
                 let hex: string;
                 if (numWeeks > 0) {
                         let bin2 = bin;
                         if (feature.properties.hasOwnProperty('cases' + (week - numWeeks)))
-                                bin2 = BREAKS.findIndex(x => x > feature.properties['cases' + (week - numWeeks)] / feature.properties.pop100k);
+                                bin2 = BREAKSextra.findIndex(x => x > feature.properties['cases' + (week - numWeeks)] / feature.properties.pop100k);
                         hex = COLOR_SCALE_COMPARE[Math.min(Math.max(bin2 - bin + 4, 0), 8)];
                 }
                 else
@@ -170,6 +171,24 @@ export class CovidUsaCanada extends React.Component<{}, CUCState> {
                         <a href="https://www.nytimes.com/interactive/2020/us/coronavirus-us-cases.html">The New York Times</a>.
                         Graphics by <a href="https://davidpritchard.org">David Pritchard</a> / <a href="https://twitter.com/drpritch2">@drpritch2</a>.
                         Sourcecode available from <a href="https://github.com/drpritch/covid-usacanada">github</a>.</Typography>
+                        </Box>
+                </div>
+                <div style={{position: 'absolute', height: '136px', zIndex: 1, right: 0, top: 0}}>
+                        <Box m={2}>
+                                <div style={{display: 'flex', flexDirection: 'row'}}>
+                                        <div style={{display: 'flex', flexDirection: bGrowth ? 'column-reverse' : 'column', flexBasis: '50%', flexGrow: 0}}>
+                                                {(bGrowth ? COLOR_SCALE_COMPARE : COLOR_SCALE).map(x => 
+                                                        <div style={{backgroundColor: x, flex: 1, width: '25px'}}>&nbsp;</div>)}
+                                        </div>
+                                        <div style={{display: 'flex', flexDirection: bGrowth ? 'column-reverse' : 'column', flexBasis: '50%', flexGrow: 0, paddingLeft: '4px'}}>
+                                                {bGrowth ? ([-4, -3, -2, -1, 0, 1, 2, 3, 4].map(x => <Typography style={{flex: 1}} variant='caption'>{x}</Typography>))
+                                                   : <React.Fragment>
+                                                        <div style={{flex: 0.5}} />
+                                                        {BREAKS.map(x =><Typography style={{flex: 1}} variant='caption'>{x}</Typography>)}
+                                                        <div style={{flex: 0.5}} />
+                                                   </React.Fragment>}
+                                        </div>
+                                </div>
                         </Box>
                 </div>
         </div>;

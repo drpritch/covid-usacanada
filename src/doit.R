@@ -490,17 +490,19 @@ plotit <- function(theData, week, lim, filename, bShowLabels = FALSE, theCanadaO
     }
   if (!is.na(filename)) {
     if (is.na(week0)) {
-      ggsave(paste0(filename, '_', week, '.png'), scale=1.5, width=5, height=4.3, units='in');
+      ggsave(paste0('../images/', filename, '_', week, '.png'), scale=1.5, width=5, height=4.3, units='in');
     } else {
-      ggsave(paste0(filename, '_delta_', week, '.png'), scale=1.5, width=5, height=4.3, units='in');
+      ggsave(paste0('../images/', filename, '_delta_', week, '.png'), scale=1.5, width=5, height=4.3, units='in');
       plotit(theData, week, lim, filename, bShowLabels, theCanadaOutline, NA, crs);
     }
   }
   p
 }
 
+stop();
+
 canadaOutlineSimplified <- canadaOutline %>% st_simplify(dTolerance = 0.1) %>%
-  st_transform(4326) %>% st_crop(xmin=-180, ymin=0, xmax=180, ymax=67) %>%
+  st_transform(4326) %>%
   st_transform(theCoords);
 theWeek0 <- 51;
 plotON(both, theWeek, 0, 'ggh_usa', week0 = theWeek0);
@@ -514,7 +516,7 @@ plotit(both11N, theWeek, limBC_11N, 'bc', 'both', crs=26911, week0 = theWeek0);
 write(geojsonsf::sf_geojson(
   both %>% st_transform(4326), digits=3), '../dist/covidUsaCanada.json');
 write(geojsonsf::sf_geojson(
-  canadaOutlineSimplified %>% st_transform(4326), digits=3), '../dist/provinceOutline.json');
+  canadaOutlineSimplified %>% st_transform(4326) %>% st_crop(xmin=-180, ymin=0, xmax=180, ymax=67), digits=3), '../dist/provinceOutline.json');
 write(geojsonsf::sf_geojson(
   usaOutline %>% st_transform(4326), digits=3), '../dist/stateeOutline.json');
 
