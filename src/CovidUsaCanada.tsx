@@ -27,7 +27,10 @@ const BREAKS = [ 25, 100, 200, 300, 400, 700, 1000, 1300 ];
 
 type CUCState = {
     week: number;
+    maxWeek: number;
+    minWeek: number;
     numWeeks: number;
+    data: JSON;
     playbackTimer: number;
 }
 
@@ -41,20 +44,37 @@ export class CovidUsaCanada extends React.Component<{}, CUCState> {
     constructor(props: any) {
         super(props);
         this.state = {
-            week: 54,
+            week: null,
+            data: null,
+            minWeek: 12,
+            maxWeek: null,
             numWeeks: 0,
             playbackTimer: null
         };
+        this.download();
+    }
+    async download() {
+        let data = await fetch(/*https://storage.googleapis.com/davidpritchard-website/*/'covidUsaCanada.json');
+        let json = await data.json();
+        const weeks: number[] = Object.keys(json.features[0].properties)
+            .filter((x: string) => x.match(/^cases/))
+            .map((x: string) => +x.substr(5));
+        const maxWeek = Math.max(...weeks);
+                
+        this.setState({week: maxWeek, maxWeek: maxWeek, data: json});
     }
     timerCallback() {
-        if(this.state.week==54) {
+        if(this.state.week==this.state.maxWeek) {
                 window.clearInterval(this.state.playbackTimer);
                 this.setState({playbackTimer: null});
         }
         else
                 this.setState({week: this.state.week+1});
     }
-    render() {
+    render(): React.ReactNode {
+        if (!this.state.data) {
+                return (<div></div>);
+        }
         const bGrowth = this.state.numWeeks > 0;
         const bPlaying = this.state.playbackTimer != null;
         const getFillColor = (feature, week: number, numWeeks: number) => {
@@ -79,7 +99,7 @@ export class CovidUsaCanada extends React.Component<{}, CUCState> {
         
         const layer = new GeoJsonLayer({
                 id: 'geojson-layer',
-                data: /*https://storage.googleapis.com/davidpritchard-website/*/'covidUsaCanada.json',
+                data: this.state.data,
                 pickable: true,
                 stroked: true,
                 filled: true,
@@ -164,20 +184,20 @@ export class CovidUsaCanada extends React.Component<{}, CUCState> {
                         <Box m={4}>
                         <Typography variant='h5'>Covid Canada+USA</Typography>
                         <Typography>{bGrowth ? 'Case Growth' : 'Cases/100,000'} for week of <br/>
-                                {weekToDateStr(this.state.week) + '-' + weekToDateStr(this.state.week, 6) +
-                                (bGrowth ? (' vs ' + this.state.numWeeks + ' weeks earlier') : '')}</Typography>
+                                {weekToDateStr(this.state.week) + '-' + weekToDateStr(this.state.week, 6)}</Typography>
+                        <Typography>{bGrowth ? 'vs ' + this.state.numWeeks + ' weeks earlier' : '\u00a0'}</Typography>
                         {bGrowth ?
-                                <Slider value={[this.state.week - this.state.numWeeks, this.state.week]} min={12} max={54}
+                                <Slider value={[this.state.week - this.state.numWeeks, this.state.week]} min={this.state.minWeek} max={this.state.maxWeek}
                                         onChange={(event: React.ChangeEvent<{}>, newValue: number|number[]) =>
                                                 this.setState({week: newValue[1], numWeeks: newValue[1]-newValue[0]})}></Slider>
-                        : <Slider value={this.state.week} min={12} max={54}
+                        : <Slider value={this.state.week} min={this.state.minWeek} max={this.state.maxWeek}
                                 onChange={(event: React.ChangeEvent<{}>, newValue: number|number[]) => this.setState({week: newValue as number})}></Slider>
     }
                         <FormControlLabel control={
                                 <Switch checked={bGrowth}
                                         onChange={() => this.setState({numWeeks: bGrowth ? 0 : 2})}
                                         color='primary'/>}
-                                label='Compare'/>
+                                label='Growth'/>
                         {bPlaying ? <IconButton style={{backgroundColor: 'rgb(25,118,210)'}} onClick={() => {
                                 window.clearInterval(this.state.playbackTimer);
                                 this.setState({playbackTimer: null});
@@ -186,8 +206,8 @@ export class CovidUsaCanada extends React.Component<{}, CUCState> {
                         </IconButton>
                         : <IconButton style={{backgroundColor: 'rgb(25,118,210)'}} onClick={() => {
                                 let handle = window.setInterval(() => this.timerCallback(), 500);
-                                if (this.state.week==54)
-                                        this.setState({ playbackTimer: handle, numWeeks: 0, week: 12});
+                                if (this.state.week==this.state.maxWeek)
+                                        this.setState({ playbackTimer: handle, numWeeks: 0, week: this.state.minWeek});
                                 else
                                         this.setState({ playbackTimer: handle, numWeeks: 0});
                                 
@@ -207,12 +227,12 @@ export class CovidUsaCanada extends React.Component<{}, CUCState> {
                 <div style={{position: 'absolute', height: '136px', zIndex: 1, right: 0, top: 0}}>
                         <Box m={2}>
                                 <div style={{display: 'flex', flexDirection: 'row'}}>
-                                        <div style={{display: 'flex', flexDirection: bGrowth ? 'column-reverse' : 'column', flexBasis: '50%', flexGrow: 0}}>
+                                        <div style={{display: 'flex', flexDirection: 'column', flexBasis: '50%', flexGrow: 0}}>
                                                 {(bGrowth ? COLOR_SCALE_COMPARE : COLOR_SCALE).map(x => 
                                                         <div style={{backgroundColor: x, flex: 1, width: '25px'}}>&nbsp;</div>)}
                                         </div>
-                                        <div style={{display: 'flex', flexDirection: bGrowth ? 'column-reverse' : 'column', flexBasis: '50%', flexGrow: 0, paddingLeft: '4px'}}>
-                                                {bGrowth ? ([-4, -3, -2, -1, 0, 1, 2, 3, 4].map(x => <Typography style={{flex: 1}} variant='caption'>{x}</Typography>))
+                                        <div style={{display: 'flex', flexDirection: 'column', flexBasis: '50%', flexGrow: 0, paddingLeft: '4px'}}>
+                                                {bGrowth ? ([4, 3, 2, 1, 0, -1, -2, -3, -4].map(x => <Typography style={{flex: 1}} variant='caption'>{x}</Typography>))
                                                    : <React.Fragment>
                                                         <div style={{flex: 0.5}} />
                                                         {BREAKS.map(x =><Typography style={{flex: 1}} variant='caption'>{x}</Typography>)}
