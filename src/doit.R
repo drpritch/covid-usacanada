@@ -10,7 +10,7 @@ library('ggpubr');
 theCoords <- 3347; # StatsCan Lambert
 theCoords <- st_crs(theCoords);
 # Week 47: Nov. 15-21
-theWeek <- 54;
+theWeek <- 55;
 maxWeek <- theWeek;
 stateUnfilter <- c('Hawaii','Puerto Rico','Virgin Islands','Northern Mariana Islands');
 
@@ -327,13 +327,29 @@ usaGeo <- st_read('../input/cb_2018_us_county_20m.shp');
 usaGeo$STATEFP <- as.numeric(usaGeo$STATEFP);
 usaGeo$COUNTYFP <- as.numeric(usaGeo$COUNTYFP);
 usaGeo$fips <- usaGeo$STATEFP * 1000 + usaGeo$COUNTYFP;
-usaGeo <- usaGeo %>% st_transform(theCoords);
+usaGeo <- usaGeo %>% st_transform(theCoords) %>%
+  select(fips, geometry);
 #    %>% st_simplify(dTolerance=500),
 
 usaCases <- read.csv('../input/us-counties.csv');
 usaCases$date <- as.Date(usaCases$date);
 usaPop <- read.csv('../input/co-est2019-alldata.csv');
-usaPop$fips <- usaPop$STATE * 1000 + usaPop$COUNTY
+usaPop$fips <- usaPop$STATE * 1000 + usaPop$COUNTY;
+
+# NYT case data aggregates NYC (NYC county, Kings, Queens, Bronx, Richmond).
+usaCases[usaCases$county=='New York City','fips'] <- 36999;
+nycPop <- usaPop %>%
+  filter(fips %in% c('36061','36047','36081','36005','36085')) %>%
+  select(POPESTIMATE2019) %>%
+  summarise_all(sum);
+usaPop <- bind_rows(usaPop, c(fips = 36999, nycPop));
+nycGeo <- usaGeo %>%
+  filter(fips %in% c('36061','36047','36081','36005','36085')) %>%
+  select(geometry);
+nycGeo <- st_union(st_union(st_union(nycGeo[1,],nycGeo[2,]), st_union(nycGeo[3,],nycGeo[4,])), nycGeo[4,]);
+usaGeo <- bind_rows(usaGeo, c(fips = 36999, nycGeo));
+
+
 usaCases <- usaCases %>% left_join(usaPop[,c('fips','POPESTIMATE2019')], by='fips');
 usaCases$pop100k <- usaCases$POPESTIMATE2019/100000;
 
@@ -499,12 +515,10 @@ plotit <- function(theData, week, lim, filename, bShowLabels = FALSE, theCanadaO
   p
 }
 
-stop();
-
 canadaOutlineSimplified <- canadaOutline %>% st_simplify(dTolerance = 0.1) %>%
   st_transform(4326) %>%
   st_transform(theCoords);
-theWeek0 <- 51;
+theWeek0 <- 53;
 plotON(both, theWeek, 0, 'ggh_usa', week0 = theWeek0);
 plotON(both, theWeek, 0.3, 'southontario', week0 = theWeek0);
 plotON(both, theWeek, 1.0, 'ontario', week0 = theWeek0);
@@ -518,7 +532,7 @@ write(geojsonsf::sf_geojson(
 write(geojsonsf::sf_geojson(
   canadaOutlineSimplified %>% st_transform(4326) %>% st_crop(xmin=-180, ymin=0, xmax=180, ymax=67), digits=3), '../dist/provinceOutline.json');
 write(geojsonsf::sf_geojson(
-  usaOutline %>% st_transform(4326), digits=3), '../dist/stateeOutline.json');
+  usaOutline %>% st_transform(4326), digits=3), '../dist/stateOutline.json');
 
 stop();
 
