@@ -3,8 +3,11 @@ import DeckGL from '@deck.gl/react';
 import {GeoJsonLayer} from '@deck.gl/layers';
 import {StaticMap} from 'react-map-gl';
 import Box from '@material-ui/core/box';
+import Fab from '@material-ui/core/Fab';
 import FormControlLabel from '@material-ui/core/formcontrollabel';
 import IconButton from '@material-ui/core/iconbutton';
+import MenuItem from '@material-ui/core/MenuItem';
+import Select from '@material-ui/core/select';
 import Slider from '@material-ui/core/slider';
 import Switch from '@material-ui/core/switch';
 import Typography from '@material-ui/core/typography';
@@ -12,18 +15,31 @@ import Typography from '@material-ui/core/typography';
 import PauseIcon from '@material-ui/icons/Pause';
 import PlayArrowIcon from '@material-ui/icons/PlayArrow';
 
-const COLOR_SCALE = [
-    // from R: scales::brewer_pal(palette='GnBu')(9)
-    "#F7FCF0", "#E0F3DB", "#CCEBC5", "#A8DDB5",
-    "#7BCCC4", "#4EB3D3", "#2B8CBE", "#0868AC",
-    "#084081"
-];
+const COLOR_SCALE = {
+    canadaUsa: [
+        // from R: scales::brewer_pal(palette='GnBu')(9)
+        "#F7FCF0", "#E0F3DB", "#CCEBC5", "#A8DDB5", "#7BCCC4",
+        "#4EB3D3", "#2B8CBE", "#0868AC", "#084081" ],
+    canada: [  // 'Blues'
+        "#F7FBFF", "#DEEBF7", "#C6DBEF", "#9ECAE1", "#6BAED6",
+        "#4292C6", "#2171B5", "#08519C", "#08306B" ],
+    atlantic: [
+        "#F7FBFF", "#DEEBF7", "#C6DBEF", "#9ECAE1", "#6BAED6",
+        "#4292C6", "#2171B5", "#08519C", "#08306B" ],
+        // 'Greens':
+//        "#F7FCF5", "#E5F5E0", "#C7E9C0", "#A1D99B", "#74C476",
+//        "#41AB5D", "#238B45", "#006D2C", "#00441B" ],
+};
 const COLOR_SCALE_COMPARE = [
     "#B2182B", "#D6604D", "#F4A582", "#FDDBC7",
     "#F7F7F7", "#D1E5F0", "#92C5DE", "#4393C3",
     "#2166AC"
 ];
-const BREAKS = [ 25, 100, 200, 300, 400, 700, 1000, 1300 ];
+const BREAKS = {
+        canadaUsa: [ 25, 100, 200, 300, 400, 700, 1000, 1300 ],
+        canada:    [ 25,  50,  75, 100, 150, 200, 250, 300 ],
+        atlantic:  [ 3,   6,    9,  12,  15,  18,  21,  24 ]
+};
 
 type CUCState = {
     week: number;
@@ -32,12 +48,20 @@ type CUCState = {
     numWeeks: number;
     data: JSON;
     playbackTimer: number;
+    scaleType: 'canadaUsa' | 'canada' | 'atlantic';
 }
 
 const weekToDateStr = (week: number, dayofweek: number = 0): string => {
   let temp = new Date('2019-12-23');
   temp.setDate(temp.getDate() + week * 7 + dayofweek);
   return temp.toLocaleDateString('en-US', {month: 'short', day: 'numeric'});
+}
+
+function filterData(data: JSON, scaleType: 'canadaUsa' | 'canada' | 'atlantic'): JSON {
+        let newData = {...data};
+        if (scaleType != 'canadaUsa') 
+                newData.features = data.features.filter((f) => f.properties.country == 'canada');
+        return newData;
 }
 
 export class CovidUsaCanada extends React.Component<{}, CUCState> {
@@ -48,6 +72,7 @@ export class CovidUsaCanada extends React.Component<{}, CUCState> {
             data: null,
             minWeek: 12,
             maxWeek: null,
+            scaleType: 'canadaUsa',
             numWeeks: 0,
             playbackTimer: null
         };
@@ -78,7 +103,7 @@ export class CovidUsaCanada extends React.Component<{}, CUCState> {
         const bGrowth = this.state.numWeeks > 0;
         const bPlaying = this.state.playbackTimer != null;
         const getFillColor = (feature, week: number, numWeeks: number) => {
-                const BREAKSextra = [ ...BREAKS, 100000 ];
+                const BREAKSextra = [ ...BREAKS[this.state.scaleType], 100000 ];
                 const bin = BREAKSextra.findIndex(x => x > feature.properties['cases' + week] / feature.properties.pop100k);
                 let hex: string;
                 if (numWeeks > 0) {
@@ -88,7 +113,7 @@ export class CovidUsaCanada extends React.Component<{}, CUCState> {
                         hex = COLOR_SCALE_COMPARE[Math.min(Math.max(bin2 - bin + 4, 0), 8)];
                 }
                 else
-                        hex = COLOR_SCALE[bin];
+                        hex = COLOR_SCALE[this.state.scaleType][bin];
                 var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
                 return result ? [
                         parseInt(result[1], 16),
@@ -96,10 +121,9 @@ export class CovidUsaCanada extends React.Component<{}, CUCState> {
                         parseInt(result[3], 16)
                 ] : null;
             };
-        
         const layer = new GeoJsonLayer({
                 id: 'geojson-layer',
-                data: this.state.data,
+                data: filterData(this.state.data, this.state.scaleType),
                 pickable: true,
                 stroked: true,
                 filled: true,
@@ -108,7 +132,8 @@ export class CovidUsaCanada extends React.Component<{}, CUCState> {
                 lineWidthMinPixels: 0.5,
                 getFillColor: (f) => getFillColor(f, this.state.week, this.state.numWeeks),
                 updateTriggers: {
-                        getFillColor: this.state.week + this.state.numWeeks
+                        getFillColor: [ this.state.week, this.state.numWeeks, this.state.scaleType ],
+                        data: this.state.scaleType
                 },
                 opacity: 0.7,
                 getLineColor: [80,80,80,40],
@@ -181,11 +206,11 @@ export class CovidUsaCanada extends React.Component<{}, CUCState> {
                 </DeckGL>
 
                 <div style={{position: 'absolute', width: '300px', zIndex: 1, left: 0, top: 0}}>
-                        <Box m={4}>
-                        <Typography variant='h5'>Covid Canada+USA</Typography>
-                        <Typography>{bGrowth ? 'Case Growth' : 'Cases/100,000'} for week of <br/>
-                                {weekToDateStr(this.state.week) + '-' + weekToDateStr(this.state.week, 6)}</Typography>
-                        <Typography>{bGrowth ? 'vs ' + this.state.numWeeks + ' weeks earlier' : '\u00a0'}</Typography>
+                        <Box m={2} p={2} className='blur'>
+                                <Typography variant='h5'>Covid Canada+USA</Typography>
+                                <Typography>{bGrowth ? 'Case Growth' : 'Cases/100,000'} for week of <br/>
+                                        {weekToDateStr(this.state.week) + '-' + weekToDateStr(this.state.week, 6)}</Typography>
+                                <Typography>{bGrowth ? 'vs ' + this.state.numWeeks + ' weeks earlier' : '\u00a0'}</Typography>
                         {bGrowth ?
                                 <Slider value={[this.state.week - this.state.numWeeks, this.state.week]} min={this.state.minWeek} max={this.state.maxWeek}
                                         onChange={(event: React.ChangeEvent<{}>, newValue: number|number[]) =>
@@ -193,27 +218,25 @@ export class CovidUsaCanada extends React.Component<{}, CUCState> {
                         : <Slider value={this.state.week} min={this.state.minWeek} max={this.state.maxWeek}
                                 onChange={(event: React.ChangeEvent<{}>, newValue: number|number[]) => this.setState({week: newValue as number})}></Slider>
     }
-                        <FormControlLabel control={
+                        <Fab color="primary" onClick={() => {
+                                if (bPlaying) {
+                                        window.clearInterval(this.state.playbackTimer);
+                                        this.setState({playbackTimer: null});
+                                } else {
+                                        let handle = window.setInterval(() => this.timerCallback(), 500);
+                                        if (this.state.week==this.state.maxWeek)
+                                                this.setState({ playbackTimer: handle, numWeeks: 0, week: this.state.minWeek});
+                                        else
+                                                this.setState({ playbackTimer: handle, numWeeks: 0});
+                                }
+                                }}>
+                                {bPlaying ? <PauseIcon/> : <PlayArrowIcon/>}
+                        </Fab>
+                        <FormControlLabel style={{marginLeft: '12px'}} control={
                                 <Switch checked={bGrowth}
                                         onChange={() => this.setState({numWeeks: bGrowth ? 0 : 2})}
                                         color='primary'/>}
-                                label='Growth'/>
-                        {bPlaying ? <IconButton style={{backgroundColor: 'rgb(25,118,210)'}} onClick={() => {
-                                window.clearInterval(this.state.playbackTimer);
-                                this.setState({playbackTimer: null});
-                        }}>
-                                <PauseIcon/>
-                        </IconButton>
-                        : <IconButton style={{backgroundColor: 'rgb(25,118,210)'}} onClick={() => {
-                                let handle = window.setInterval(() => this.timerCallback(), 500);
-                                if (this.state.week==this.state.maxWeek)
-                                        this.setState({ playbackTimer: handle, numWeeks: 0, week: this.state.minWeek});
-                                else
-                                        this.setState({ playbackTimer: handle, numWeeks: 0});
-                                
-                        }}>
-                                <PlayArrowIcon/>
-                        </IconButton>}
+                                        label='Growth'/>
                         </Box>
                 </div>
                 <div style={{position: 'absolute', width: '100vw', zIndex: 1, left: 0, bottom: 0}}>
@@ -225,17 +248,22 @@ export class CovidUsaCanada extends React.Component<{}, CUCState> {
                         </Box>
                 </div>
                 <div style={{position: 'absolute', height: '136px', zIndex: 1, right: 0, top: 0}}>
+                        <Select value={this.state.scaleType} onChange={(event) => this.setState({scaleType: event.target.value})}>
+                                <MenuItem value='canadaUsa'>Canada/USA</MenuItem>
+                                <MenuItem value='canada'>Canada</MenuItem>
+                                <MenuItem value='atlantic'>Atlantic</MenuItem>
+                        </Select>
                         <Box m={2}>
                                 <div style={{display: 'flex', flexDirection: 'row'}}>
                                         <div style={{display: 'flex', flexDirection: 'column', flexBasis: '50%', flexGrow: 0}}>
-                                                {(bGrowth ? COLOR_SCALE_COMPARE : COLOR_SCALE).map(x => 
+                                                {(bGrowth ? COLOR_SCALE_COMPARE : COLOR_SCALE[this.state.scaleType]).map(x => 
                                                         <div style={{backgroundColor: x, flex: 1, width: '25px'}}>&nbsp;</div>)}
                                         </div>
                                         <div style={{display: 'flex', flexDirection: 'column', flexBasis: '50%', flexGrow: 0, paddingLeft: '4px'}}>
                                                 {bGrowth ? ([4, 3, 2, 1, 0, -1, -2, -3, -4].map(x => <Typography style={{flex: 1}} variant='caption'>{x}</Typography>))
                                                    : <React.Fragment>
                                                         <div style={{flex: 0.5}} />
-                                                        {BREAKS.map(x =><Typography style={{flex: 1}} variant='caption'>{x}</Typography>)}
+                                                        {BREAKS[this.state.scaleType].map(x =><Typography style={{flex: 1}} variant='caption'>{x}</Typography>)}
                                                         <div style={{flex: 0.5}} />
                                                    </React.Fragment>}
                                         </div>
