@@ -10,7 +10,8 @@ library('ggpubr');
 theCoords <- 3347; # StatsCan Lambert
 theCoords <- st_crs(theCoords);
 # Week 47: Nov. 15-21
-theWeek <- 55;
+theWeek <- 56;
+theWeek0 <- theWeek - 2;
 maxWeek <- theWeek;
 stateUnfilter <- c('Hawaii','Puerto Rico','Virgin Islands','Northern Mariana Islands');
 
@@ -305,6 +306,7 @@ canadaCases <- canadaCases %>%
 # Then revised to go beyond 2020.
 canadaCases <- canadaCases %>% group_by(health_region, province, pop100k, week = as.numeric(floor((date_report - as.Date('2019-12-22'))/7))) %>%
   summarise(cases=sum(cases)) %>%
+  filter(week <= maxWeek) %>%
   tidyr::pivot_wider(names_from=week, values_from=cases, names_prefix='cases');
 
 canada <- inner_join(canadaGeo %>% select(health_region),
@@ -365,6 +367,7 @@ usaCases$cases <- pmax(usaCases$weekCases, 0);
 usaCases <- usaCases %>%
   filter(!is.na(fips)) %>%
   select(fips, health_region = county, state, pop100k, week, cases) %>%
+  filter(week <= maxWeek) %>%
   tidyr::pivot_wider(names_from=week, values_from=cases, names_prefix='cases', values_fill=0);
 
 usa <- inner_join(usaGeo %>% select('fips'),
@@ -457,13 +460,14 @@ plotit <- function(theData, week, lim, filename, bShowLabels = FALSE, theCanadaO
                     format.Date(baseDate, "%b %d"), '-', format.Date(baseDate+6, "%b %d"));
   } else {
     data <- theData %>% select(pop100k, cases=paste0('cases', week), cases0 = paste0('cases', week0), geometry, province, health_region, country);
-    data$bin <- cut(data$cases/data$pop100k * scaleFactor, breaks=c(-10, breaks, 100000));
-    data$bin0 <- cut(data$cases0/data$pop100k * scaleFactor, breaks=c(-10, breaks, 100000));
-    data$numValue <- (data$cases - data$cases0)/data$pop100k * scaleFactor;
-    data$value <- factor(pmax(pmin(as.numeric(data$bin) - as.numeric(data$bin0), 4), -4), levels=-4:4);
-    theScaleFill <- scale_fill_brewer(palette='RdBu', type='seq', direction=-1);
-    legendPosition = 'right';
-    legendTitle <- 'Category growth';
+    breaks <- c(-300, -200, -100, -25, 25, 100, 200, 300);
+    theScaleFill <- scale_fill_fermenter(palette='RdBu', direction=-1,
+                                         breaks = breaks,
+                                         limits = c(-500, 500));
+    data$value <- (data$cases - data$cases0)/data$pop100k * scaleFactor;
+    data$numValue <- data$value;
+    legendPosition = 'bottom';
+    legendTitle <- 'Growth in weekly cases/100,000';
     title <- paste0('COVID-19 Case growth over ', week-week0, ' weeks prior');
   }
   data$titleTrim <- substr(data$health_region, 0, 10);
@@ -518,7 +522,6 @@ plotit <- function(theData, week, lim, filename, bShowLabels = FALSE, theCanadaO
 canadaOutlineSimplified <- canadaOutline %>% st_simplify(dTolerance = 0.1) %>%
   st_transform(4326) %>%
   st_transform(theCoords);
-theWeek0 <- 53;
 plotON(both, theWeek, 0, 'ggh_usa', week0 = theWeek0);
 plotON(both, theWeek, 0.3, 'southontario', week0 = theWeek0);
 plotON(both, theWeek, 1.0, 'ontario', week0 = theWeek0);

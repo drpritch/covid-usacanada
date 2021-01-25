@@ -15,30 +15,35 @@ import Typography from '@material-ui/core/typography';
 import PauseIcon from '@material-ui/icons/Pause';
 import PlayArrowIcon from '@material-ui/icons/PlayArrow';
 
+const palettes = {
+    // from R: scales::brewer_pal(palette='GnBu')(9)
+    GnBu: [ "#F7FCF0", "#E0F3DB", "#CCEBC5", "#A8DDB5", "#7BCCC4",
+            "#4EB3D3", "#2B8CBE", "#0868AC", "#084081" ],
+    Blues: [ "#F7FBFF", "#DEEBF7", "#C6DBEF", "#9ECAE1", "#6BAED6",
+            "#4292C6", "#2171B5", "#08519C", "#08306B" ],
+    Purples: [ "#FCFBFD", "#EFEDF5", "#DADAEB", "#BCBDDC", "#9E9AC8",
+            "#807DBA", "#6A51A3", "#54278F", "#3F007D" ],
+    Greens: [ "#F7FCF5", "#E5F5E0", "#C7E9C0", "#A1D99B", "#74C476",
+        "#41AB5D", "#238B45", "#006D2C", "#00441B" ]
+};
 const COLOR_SCALE = {
-    canadaUsa: [
-        // from R: scales::brewer_pal(palette='GnBu')(9)
-        "#F7FCF0", "#E0F3DB", "#CCEBC5", "#A8DDB5", "#7BCCC4",
-        "#4EB3D3", "#2B8CBE", "#0868AC", "#084081" ],
-    canada: [  // 'Blues'
-        "#F7FBFF", "#DEEBF7", "#C6DBEF", "#9ECAE1", "#6BAED6",
-        "#4292C6", "#2171B5", "#08519C", "#08306B" ],
-    atlantic: [
-        "#F7FBFF", "#DEEBF7", "#C6DBEF", "#9ECAE1", "#6BAED6",
-        "#4292C6", "#2171B5", "#08519C", "#08306B" ],
-        // 'Greens':
-//        "#F7FCF5", "#E5F5E0", "#C7E9C0", "#A1D99B", "#74C476",
-//        "#41AB5D", "#238B45", "#006D2C", "#00441B" ],
+    canadaUsa: palettes.GnBu,
+    canada: palettes.Purples,
+    atlantic: palettes.Purples
 };
 const COLOR_SCALE_COMPARE = [
-    "#B2182B", "#D6604D", "#F4A582", "#FDDBC7",
-    "#F7F7F7", "#D1E5F0", "#92C5DE", "#4393C3",
-    "#2166AC"
+    "#2166AC", "#4393C3", "#92C5DE", "#D1E5F0", "#F7F7F7",
+    "#FDDBC7", "#F4A582", "#D6604D", "#B2182B",
 ];
 const BREAKS = {
         canadaUsa: [ 25, 100, 200, 300, 400, 700, 1000, 1300 ],
         canada:    [ 25,  50,  75, 100, 150, 200, 250, 300 ],
-        atlantic:  [ 3,   6,    9,  12,  15,  18,  21,  24 ]
+        atlantic:  [ 4,   8,   12,  16,  20,  24,  28,  32 ]
+};
+const BREAKS_COMPARE = {
+        canadaUsa: [-300,-200,-100, -25, 25, 100, 200, 300 ],
+        canada:    [-150,-100, -50, -25, 25,  50, 100, 150 ],
+        atlantic:  [ -16, -12,  -8,  -4,  4,   8,  12,  16 ]
 };
 
 type CUCState = {
@@ -103,17 +108,29 @@ export class CovidUsaCanada extends React.Component<{}, CUCState> {
         const bGrowth = this.state.numWeeks > 0;
         const bPlaying = this.state.playbackTimer != null;
         const getFillColor = (feature, week: number, numWeeks: number) => {
-                const BREAKSextra = [ ...BREAKS[this.state.scaleType], 100000 ];
-                const bin = BREAKSextra.findIndex(x => x > feature.properties['cases' + week] / feature.properties.pop100k);
-                let hex: string;
+                const cases = feature.properties['cases' + week] / feature.properties.pop100k;
+                let scale: string[];
+                let breaks: number[];
+                let value : number;
                 if (numWeeks > 0) {
-                        let bin2 = bin;
-                        if (feature.properties.hasOwnProperty('cases' + (week - numWeeks)))
-                                bin2 = BREAKSextra.findIndex(x => x > feature.properties['cases' + (week - numWeeks)] / feature.properties.pop100k);
-                        hex = COLOR_SCALE_COMPARE[Math.min(Math.max(bin2 - bin + 4, 0), 8)];
+                        scale = COLOR_SCALE_COMPARE;
+                        breaks = BREAKS_COMPARE[this.state.scaleType];
+                        let cases2 = cases;
+                        if (feature.properties.hasOwnProperty('cases' + (week - numWeeks))) {
+                                cases2 = feature.properties['cases' + (week - numWeeks)] / feature.properties.pop100k;
+                                value = cases - cases2;
+                        }
+                        else
+                                value = 0;
                 }
-                else
-                        hex = COLOR_SCALE[this.state.scaleType][bin];
+                else {
+                        scale = COLOR_SCALE[this.state.scaleType];
+                        breaks = BREAKS[this.state.scaleType];
+                        value = cases;
+                }
+                const BREAKSextra = [ ...breaks, 100000 ];
+                const bin = BREAKSextra.findIndex(x => x > value);
+                const hex = scale[bin];
                 var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
                 return result ? [
                         parseInt(result[1], 16),
@@ -260,12 +277,10 @@ export class CovidUsaCanada extends React.Component<{}, CUCState> {
                                                         <div style={{backgroundColor: x, flex: 1, width: '25px'}}>&nbsp;</div>)}
                                         </div>
                                         <div style={{display: 'flex', flexDirection: 'column', flexBasis: '50%', flexGrow: 0, paddingLeft: '4px'}}>
-                                                {bGrowth ? ([4, 3, 2, 1, 0, -1, -2, -3, -4].map(x => <Typography style={{flex: 1}} variant='caption'>{x}</Typography>))
-                                                   : <React.Fragment>
-                                                        <div style={{flex: 0.5}} />
-                                                        {BREAKS[this.state.scaleType].map(x =><Typography style={{flex: 1}} variant='caption'>{x}</Typography>)}
-                                                        <div style={{flex: 0.5}} />
-                                                   </React.Fragment>}
+                                                <div style={{flex: 0.5}} />
+                                                {(bGrowth ? BREAKS_COMPARE : BREAKS)[this.state.scaleType].map(
+                                                        x => <Typography style={{flex: 1}} variant='caption'>{x}</Typography>)}
+                                                <div style={{flex: 0.5}} />
                                         </div>
                                 </div>
                         </Box>
