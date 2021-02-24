@@ -27,8 +27,8 @@ const palettes = {
         "#41AB5D", "#238B45", "#006D2C", "#00441B" ]
 };
 const COLOR_SCALE = {
-    canadaUsa: palettes.GnBu,
-    canada: palettes.Purples,
+    canadaUsa1300: palettes.GnBu,
+    canadaUsa300: palettes.GnBu,
     atlantic: palettes.Purples
 };
 const COLOR_SCALE_COMPARE = [
@@ -36,13 +36,13 @@ const COLOR_SCALE_COMPARE = [
     "#FDDBC7", "#F4A582", "#D6604D", "#B2182B",
 ];
 const BREAKS = {
-        canadaUsa: [ 25, 100, 200, 300, 400, 700, 1000, 1300 ],
-        canada:    [ 25,  50,  75, 100, 150, 200, 250, 300 ],
+        canadaUsa1300: [ 25, 100, 200, 300, 400, 700, 1000, 1300 ],
+        canadaUsa300:  [ 25,  50,  75, 100, 150, 200, 250, 300 ],
         atlantic:  [ 4,   8,   12,  16,  20,  24,  28,  32 ]
 };
 const BREAKS_COMPARE = {
-        canadaUsa: [-300,-200,-100, -25, 25, 100, 200, 300 ],
-        canada:    [-150,-100, -50, -25, 25,  50, 100, 150 ],
+        canadaUsa1300: [-300,-200,-100, -25, 25, 100, 200, 300 ],
+        canadaUsa300:  [-150,-100, -50, -25, 25,  50, 100, 150 ],
         atlantic:  [ -16, -12,  -8,  -4,  4,   8,  12,  16 ]
 };
 
@@ -53,7 +53,7 @@ type CUCState = {
     numWeeks: number;
     data: JSON;
     playbackTimer: number;
-    scaleType: 'canadaUsa' | 'canada' | 'atlantic';
+    scaleType: 'canadaUsa1300' | 'canadaUsa300' | 'atlantic';
 }
 
 const weekToDateStr = (week: number, dayofweek: number = 0): string => {
@@ -62,9 +62,9 @@ const weekToDateStr = (week: number, dayofweek: number = 0): string => {
   return temp.toLocaleDateString('en-US', {month: 'short', day: 'numeric'});
 }
 
-function filterData(data: JSON, scaleType: 'canadaUsa' | 'canada' | 'atlantic'): JSON {
+function filterData(data: JSON, scaleType: 'canadaUsa1300' | 'canadaUsa300' | 'atlantic'): JSON {
         let newData = {...data};
-        if (scaleType != 'canadaUsa') 
+        if (scaleType == 'atlantic') 
                 newData.features = data.features.filter((f) => f.properties.country == 'canada');
         return newData;
 }
@@ -77,7 +77,7 @@ export class CovidUsaCanada extends React.Component<{}, CUCState> {
             data: null,
             minWeek: 12,
             maxWeek: null,
-            scaleType: 'canadaUsa',
+            scaleType: 'canadaUsa300',
             numWeeks: 0,
             playbackTimer: null
         };
@@ -266,8 +266,8 @@ export class CovidUsaCanada extends React.Component<{}, CUCState> {
                 </div>
                 <div style={{position: 'absolute', height: '136px', zIndex: 1, right: 0, top: 0}}>
                         <Select value={this.state.scaleType} onChange={(event) => this.setState({scaleType: event.target.value})}>
-                                <MenuItem value='canadaUsa'>Canada/USA</MenuItem>
-                                <MenuItem value='canada'>Canada</MenuItem>
+                                <MenuItem value='canadaUsa1300'>Canada/USA_High</MenuItem>
+                                <MenuItem value='canadaUsa300'>Canada/USA_Med</MenuItem>
                                 <MenuItem value='atlantic'>Atlantic</MenuItem>
                         </Select>
                         <Box m={2}>
