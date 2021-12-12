@@ -2,6 +2,8 @@ library('sf');
 library('dplyr');
 library('ggplot2');
 library('ggpubr');
+library('R.utils');
+library('geojsonsf');
 
 #theCoords <- 26911; #UTM11N
 #theCoords <- 26917; #UTM17N
@@ -9,8 +11,8 @@ library('ggpubr');
 #theCoords <- 4326; # WGS 84
 theCoords <- 3347; # StatsCan Lambert
 theCoords <- st_crs(theCoords);
-# Week 47: Nov. 15-21
-theWeek <- 56;
+# Week 47: Nov. 15-21. Was 92
+theWeek <- 101;
 theWeek0 <- theWeek - 2;
 maxWeek <- theWeek;
 stateUnfilter <- c('Hawaii','Puerto Rico','Virgin Islands','Northern Mariana Islands');
@@ -382,6 +384,7 @@ usa$country <- 'usa';
 both <- bind_rows(canada, usa);
 both11N <- both %>% st_transform(26911);
 both13N <- both %>% st_transform(26913);
+both18N <- both %>% st_transform(26918);
 
 
 canadaOutline <- st_read('../input/gpr_000b11a_e.shp') %>%
@@ -414,6 +417,7 @@ limNA <- list(x = c(3415360, 9015737), y = c(-1398365, 4360410));
 limON30 <- list(x = c(6702400, 7804000), y = c(480000, 1340000));
 limWindsor <- list(x = c(6702400, 7304000), y = c(440000, 980000));
 limWindsor <- list(x = c(6852400, 7154000), y = c(585000, 845000));
+limQC30 <- list(x = c(7302400, 8104000), y = c(880000, 1540000));
 limInterp <- function(interp) {
   if (interp < 0.3) {
     interp <- interp / 0.3;
@@ -446,7 +450,9 @@ plotON <- function(data, week, interp, filename, week0 = NA) {
 }
 plotit <- function(theData, week, lim, filename, bShowLabels = FALSE, theCanadaOutline = canadaOutline, week0 = NA, crs=3347) {
   baseDate <- as.Date('2019-12-29') + (week-1)*7;
-  breaks <- c(25,1:4*100, 700, 1000, 1300);
+#  breaks <- c(25,1:4*100, 700, 1000, 1300);
+  breaks <- c(25,50,100,150,200,300,450,600);
+#  breaks <- c(25,50,75,100,150,200,250,300);
   if (is.na(week0)) {
     data <- theData %>% select(pop100k, cases=paste0('cases', week), geometry, province, health_region, country);
     theScaleFill <- scale_fill_fermenter(palette='GnBu', direction=1,
@@ -460,7 +466,9 @@ plotit <- function(theData, week, lim, filename, bShowLabels = FALSE, theCanadaO
                     format.Date(baseDate, "%b %d"), '-', format.Date(baseDate+6, "%b %d"));
   } else {
     data <- theData %>% select(pop100k, cases=paste0('cases', week), cases0 = paste0('cases', week0), geometry, province, health_region, country);
-    breaks <- c(-300, -200, -100, -25, 25, 100, 200, 300);
+#    breaks <- c(-300, -200, -100, -25, 25, 100, 200, 300);
+#   breaks <- c(-200, -125, -75, -25, 25, 75, 125, 200);
+   breaks <- c(-150, -100, -50, -25, 25, 50, 100, 150);
     theScaleFill <- scale_fill_fermenter(palette='RdBu', direction=-1,
                                          breaks = breaks,
                                          limits = c(-500, 500));
@@ -528,14 +536,19 @@ plotON(both, theWeek, 1.0, 'ontario', week0 = theWeek0);
 plotit(both, theWeek, limNA, 'north_america', theCanadaOutline = canadaOutlineSimplified, week0 = theWeek0);
 plotit(both13N, theWeek, limABSKMB_extra_13N, 'prairies', 'canada', crs=26913, week0 = theWeek0);
 plotit(both, theWeek, limWindsor, 'windsor', 'both', week0 = theWeek0);
+plotit(both, theWeek, limQC30, 'southquebec', 'both', week0 = theWeek0);
 plotit(both11N, theWeek, limBC_11N, 'bc', 'both', crs=26911, week0 = theWeek0);
 
 write(geojsonsf::sf_geojson(
   both %>% st_transform(4326), digits=3), '../dist/covidUsaCanada.json');
+gzip('../dist/covidUsaCanada.json', overwrite=T);
 write(geojsonsf::sf_geojson(
-  canadaOutlineSimplified %>% st_transform(4326) %>% st_crop(xmin=-180, ymin=0, xmax=180, ymax=67), digits=3), '../dist/provinceOutline.json');
+  canadaOutlineSimplified %>% st_transform(4326) %>% st_crop(xmin=-180, ymin=0, xmax=180, ymax=67), digits=3),
+  '../dist/provinceOutline.json');
+gzip('../dist/provinceOutline.json', overwrite=T);
 write(geojsonsf::sf_geojson(
   usaOutline %>% st_transform(4326), digits=3), '../dist/stateOutline.json');
+gzip('../dist/stateOutline.json', overwrite=T);
 
 stop();
 

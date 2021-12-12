@@ -28,7 +28,9 @@ const palettes = {
 };
 const COLOR_SCALE = {
     canadaUsa1300: palettes.GnBu,
+    canadaUsa600: palettes.GnBu,
     canadaUsa300: palettes.GnBu,
+    canadaUsa80: palettes.GnBu,
     atlantic: palettes.Purples
 };
 const COLOR_SCALE_COMPARE = [
@@ -37,12 +39,16 @@ const COLOR_SCALE_COMPARE = [
 ];
 const BREAKS = {
         canadaUsa1300: [ 25, 100, 200, 300, 400, 700, 1000, 1300 ],
-        canadaUsa300:  [ 25,  50,  75, 100, 150, 200, 250, 300 ],
-        atlantic:  [ 4,   8,   12,  16,  20,  24,  28,  32 ]
+        canadaUsa600: [ 25, 50, 100, 150, 200, 300, 450, 600 ],
+        canadaUsa300: [ 25,  50,  75, 100, 150, 200, 250, 300 ],
+        canadaUsa80: [ 10,  20,  30,  40,  50,  60,  70,  80 ],
+        atlantic:     [ 4,   8,   12,  16,  20,  24,  28,  32 ]
 };
 const BREAKS_COMPARE = {
         canadaUsa1300: [-300,-200,-100, -25, 25, 100, 200, 300 ],
+        canadaUsa600:  [-200,-125, -75, -25, 25,  75, 125, 200 ],
         canadaUsa300:  [-150,-100, -50, -25, 25,  50, 100, 150 ],
+        canadaUsa80:   [ -75, -50, -25, -10, 10,  25,  50,  75 ],
         atlantic:  [ -16, -12,  -8,  -4,  4,   8,  12,  16 ]
 };
 
@@ -53,7 +59,7 @@ type CUCState = {
     numWeeks: number;
     data: JSON;
     playbackTimer: number;
-    scaleType: 'canadaUsa1300' | 'canadaUsa300' | 'atlantic';
+    scaleType: 'canadaUsa1300' | 'canadaUsa600' | 'canadaUsa300' | 'canadaUsa80' | 'atlantic';
 }
 
 const weekToDateStr = (week: number, dayofweek: number = 0): string => {
@@ -62,10 +68,10 @@ const weekToDateStr = (week: number, dayofweek: number = 0): string => {
   return temp.toLocaleDateString('en-US', {month: 'short', day: 'numeric'});
 }
 
-function filterData(data: JSON, scaleType: 'canadaUsa1300' | 'canadaUsa300' | 'atlantic'): JSON {
+function filterData(data: JSON, scaleType: 'canadaUsa1300' | 'canadaUsa600' | 'canadaUsa300' | 'canadaUsa80' | 'atlantic'): JSON {
         let newData = {...data};
-        if (scaleType == 'atlantic') 
-                newData.features = data.features.filter((f) => f.properties.country == 'canada');
+//        if (scaleType == 'atlantic') 
+//                newData.features = data.features.filter((f) => f.properties.country == 'canada');
         return newData;
 }
 
@@ -77,7 +83,7 @@ export class CovidUsaCanada extends React.Component<{}, CUCState> {
             data: null,
             minWeek: 12,
             maxWeek: null,
-            scaleType: 'canadaUsa300',
+            scaleType: 'canadaUsa600',
             numWeeks: 0,
             playbackTimer: null
         };
@@ -152,7 +158,7 @@ export class CovidUsaCanada extends React.Component<{}, CUCState> {
                         getFillColor: [ this.state.week, this.state.numWeeks, this.state.scaleType ],
                         data: this.state.scaleType
                 },
-                opacity: 0.7,
+                opacity: 1.0,
                 getLineColor: [80,80,80,40],
                 Radius: 100,
                 getLineWidth: 1,
@@ -264,10 +270,12 @@ export class CovidUsaCanada extends React.Component<{}, CUCState> {
                         Sourcecode available from <a href="https://github.com/drpritch/covid-usacanada">github</a>.</Typography>
                         </Box>
                 </div>
-                <div style={{position: 'absolute', height: '136px', zIndex: 1, right: 0, top: 0}}>
+                <div style={{position: 'absolute', padding: '4px', height: '216px', zIndex: 1, right: 0, top: 0}}  className='blur'>
                         <Select value={this.state.scaleType} onChange={(event) => this.setState({scaleType: event.target.value})}>
-                                <MenuItem value='canadaUsa1300'>Canada/USA_High</MenuItem>
-                                <MenuItem value='canadaUsa300'>Canada/USA_Med</MenuItem>
+                                <MenuItem value='canadaUsa1300'>XHigh</MenuItem>
+                                <MenuItem value='canadaUsa600'>High</MenuItem>
+                                <MenuItem value='canadaUsa300'>Medium</MenuItem>
+                                <MenuItem value='canadaUsa80'>Low</MenuItem>
                                 <MenuItem value='atlantic'>Atlantic</MenuItem>
                         </Select>
                         <Box m={2}>
